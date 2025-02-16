@@ -1,13 +1,26 @@
 {% extends 'layout.html' %}
 
 {% block body %}
+<div class="nav">
 
-<h1>Register</h1>
-<form action="/register" method="post">
-    <input name="username" placeholder="Username" type="text" required>
-    <input name="password" placeholder="Password" type="password" required>
-    <button type="submit">Register</button>
-</form>
-<p>Already have an account? <a href="/login">Login here</a>.</p>
+</div>
+
+<div class="content-container">
+    <div class="register-title">
+        <h1>Register</h1>
+    </div>
+    <div class="register-form">
+        <form action="/register" method="post">
+            <input name="username" placeholder="Username" type="text" required>
+            <input name="password" placeholder="Password" type="password" required>
+            <button type="submit">Register</button>
+        </form>
+        <p>Already have an account? <a href="/login">Login here</a>.</p>
+    </div>
+
+    <div class="register-side-img">
+        <img src="{{ url_for('static', filename='register-side-img.png') }}" alt="Register-img">
+    </div>
+</div>
 
 {% endblock %}
