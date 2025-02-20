@@ -33,7 +33,7 @@ def init_db():
     c.execute('''
     CREATE TABLE IF NOT EXISTS flashcard_lists (
         list_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        list_name TEXT NOT NULL,
+        list_name TEXT NOT NULL
     )
     ''')
 
@@ -109,7 +109,6 @@ def login():
     return render_template('login.html')
 
 @app.route('/register', methods=['GET','POST'])
-
 # NOTE: for now, this is just signing up all new users as students. 
 def register():
     if request.method == 'POST': #i.e. if its a form submission
@@ -152,7 +151,7 @@ def register():
         conn.close()
     return render_template('register.html')
 
-@app.route('/logout')
+@app.route('/logout', method=['POST']) # POST request to prevent CSRF
 def logout():
     session.clear()
     flash('You were logged out')
@@ -161,4 +160,41 @@ def logout():
 ## STUDENT ROUTES ##
 @app.route('/student_dashboard')
 def student_dashboard():
-    return render_template('student_dashboard.html')
+    if not session.get('logged_in') or session.get('admin'):
+        return redirect('/login')
+    
+    def get_student_lists(user_id):
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+
+        cursor.execute('''
+        SELECT list_name, list_id
+        FROM flashcard_lists
+        WHERE list_id IN (
+            SELECT list_id
+            FROM list_students
+            WHERE student_id = ?
+        )
+        ''', (user_id,)) # logic explanation: get all list records where the list_id is in the many-to-many table for the student
+
+        lists = cursor.fetchall()
+        conn.close()
+        return lists
+    
+    return render_template('student_dashboard.html', lists = get_student_lists(session['user_id']))
+
+## ADMIN ROUTES ##
+
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if not session.get('logged_in') or not session.get('admin'):
+        return redirect('/login')
+    
+    def get_all_lists():
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT list_name FROM flashcard_lists')
+        lists = cursor.fetchall()
+        conn.close()
+        return lists
