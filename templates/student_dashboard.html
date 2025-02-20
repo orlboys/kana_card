@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+<div class="nav">
+    <div class="nav-item">
+        <a href="/student_home">Home</a>
+    </div>
+    <div class="nav-item">
+        <a href="/student_profile">Profile</a>
+    </div>
+    <div class="nav-item">
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="content-container">
+    <div class="student-home-title">
+        <h1>Welcome, {{ session['username'] }}</h1>
+    </div>
+    <div class="student-home-content">
+        <p>Here will be a list of all enrolled courses for the student.</p>
+    </div>
+
+{% endblock %}
