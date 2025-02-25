@@ -25,9 +25,10 @@
         <div class="student-home-lists">
             {% for list in lists %}
             <div class="student-home-list">
-                <!-- <a href="/student_list/{{ list['id'] }}">{{ list['name'] }}</a> -->
+                <a href="/student_list/{{ list['id'] }}/0">{{ list['name'] }}</a>
             </div>
-            {% endfor %}`
+            {% endfor %}
+        </div>
     </div>
 
 {% endblock %}

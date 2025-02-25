@@ -1,0 +1,60 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+<div class="nav">
+
+    <div class="nav">
+        <div class="nav-item">
+            <a href="/admin_dashboard">Home</a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin_dashboard/users">User Management</a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin_dashboard/lists">List Management</a>
+        </div>
+        <div class="nav-item">
+            <form action="/logout" method="post">
+                <button type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="content-container">
+        <div class="student-home-title">
+            <h1>Welcome, {{ session['username'] }}</h1>
+        </div>
+        <div class="student-home-content">
+            <p>Assigned Lists:</p>
+            <div class="student-home-lists">
+                {% for list in lists %}
+                <div class="student-home-list">
+                    <!-- <a href="/student_list/{{ list['id'] }}">{{ list['name'] }}</a> -->
+                </div>
+                {% endfor %}`
+        </div>
+    
+
+<div class="content-container">
+    <div class="dashboard-container">
+        <div class="dashboard-title">
+            <h1 class="title">Dashboard</h1>
+        </div>
+
+        <div class="dashboard-content">
+            <div class="dashboard-item">
+                <h2>Users</h2>
+                <p>View and manage users.</p>
+                <a href="/admin_dashboard/users">View Users</a>
+            </div>
+            <div class="dashboard-item">
+                <h2>Lists</h2>
+                <p>View and manage lists.</p>
+                <a href="/admin_dashboard/lists">View Lists</a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

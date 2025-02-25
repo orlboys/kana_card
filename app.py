@@ -1,7 +1,6 @@
 import sqlite3
 from flask import Flask, render_template, request, redirect, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-
 app = Flask(__name__)
 app.secret_key = 'placeholder_secret_key' #change this for deployment >:(
 
@@ -66,7 +65,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
 init_db()
 
 @app.route('/')
@@ -151,7 +149,7 @@ def register():
         conn.close()
     return render_template('register.html')
 
-@app.route('/logout', method=['POST']) # POST request to prevent CSRF
+@app.route('/logout', methods=['POST']) # POST request to prevent CSRF
 def logout():
     session.clear()
     flash('You were logged out')
@@ -163,28 +161,70 @@ def student_dashboard():
     if not session.get('logged_in') or session.get('admin'):
         return redirect('/login')
     
-    def get_student_lists(user_id):
+    def get_student_lists(user_id): 
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
+        cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,))
+        student_id = cursor.fetchone()[0]
+        print("Session user_id:", session.get('user_id'))
+        print("Fetched Student_id", student_id)
 
         cursor.execute('''
-        SELECT list_name, list_id
+        SELECT list_id, list_name
         FROM flashcard_lists
         WHERE list_id IN (
             SELECT list_id
             FROM list_students
             WHERE student_id = ?
         )
-        ''', (user_id,)) # logic explanation: get all list records where the list_id is in the many-to-many table for the student
+        ''', (student_id,)) # logic explanation: get all list records where the list_id is in the many-to-many table for the student
 
-        lists = cursor.fetchall()
+        lists = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
+        print (lists)
         conn.close()
         return lists
     
-    return render_template('student_dashboard.html', lists = get_student_lists(session['user_id']))
+    return render_template('student_dashboard.html', lists = get_student_lists(session.get('user_id')))
+
+@app.route('/student_list/<int:list_id>/<int:card_index>', methods=['GET', 'POST'])
+def list_card(list_id, card_index=0):
+    if not session.get('logged_in') or session.get('admin'):
+        return redirect('/login')
+
+    def get_list_name(list_id):
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT list_name FROM flashcard_lists WHERE list_id = ?', (list_id,))
+        list_name = cursor.fetchone()[0]
+        conn.close()
+        return list_name
+
+    def get_flashcards(list_id):
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT question, answer FROM flashcards WHERE list_id = ?', (list_id,))
+        flashcards = cursor.fetchall()
+        conn.close()
+        return flashcards
+
+    flashcards = get_flashcards(list_id)
+    total_cards = len(flashcards)
+
+    if total_cards == 0 or card_index < 0 or card_index >= total_cards:
+        return "No flashcards found", 404
+    
+    print(f"Showing card {card_index}: {flashcards[card_index]}")
+
+    return render_template(
+        'list.html',
+        list_name=get_list_name(list_id),
+        flashcard=flashcards[card_index],  # Single flashcard for this page
+        list_id=list_id,
+        card_index=card_index,
+        total_cards=total_cards
+    )
 
 ## ADMIN ROUTES ##
-
 @app.route('/admin_dashboard')
 def admin_dashboard():
     if not session.get('logged_in') or not session.get('admin'):
@@ -198,3 +238,6 @@ def admin_dashboard():
         lists = cursor.fetchall()
         conn.close()
         return lists
+    
+    return render_template('admin_dashboard.html', lists = get_all_lists())
+

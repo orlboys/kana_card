@@ -1,0 +1,49 @@
+/* Container for the card with 3D perspective */
+.card-container {
+    width: 300px; /* Set desired width */
+    height: 200px; /* Set desired height */
+    perspective: 1000px; /* Creates the 3D effect */
+}
+
+/* The card element with front and back faces */
+.card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d; /* Enables 3D transformations */
+    transition: transform 0.6s; /* Smooth transition for the flip */
+}
+
+/* Apply rotation when the card is flipped */
+.card-container.flipped .card {
+    transform: rotateY(180deg);
+}
+
+/* Common styles for both front and back faces */
+.card .front,
+.card .back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden; /* Hides the back face when not visible */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #f1f1f1; /* Light border for visual effect */
+    border-radius: 10px; /* Rounded corners */
+    text-align: center;
+    font-size: 18px;
+    background-color: white;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+}
+
+/* Specific styles for the front face */
+.card .front {
+    background-color: #f8f9fa; /* Light gray background */
+}
+
+/* Specific styles for the back face */
+.card .back {
+    background-color: #ffc107; /* Amber background */
+    transform: rotateY(180deg); /* Back face is rotated 180 degrees */
+}

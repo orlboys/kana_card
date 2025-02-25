@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+<div class='nav'>
+    <div class='nav-item'>
+        <a href='/student_dashboard'>Home</a>
+    </div>
+    <div class='nav-item'>
+        <a href='/student_profile'>Profile</a>
+    </div>
+    <div class='nav-item'>
+        <form action='/logout' method='post'>
+            <button type='submit'>Logout</button>
+        </form>
+    </div>
+</div>
+<div>
+    <h1>{{ list_name }}</h1>
+    <div class='card-container'>
+        <div class="card"> <!-- Toggles the 'flipped' class on click to flip the card -->
+            <div class="front">
+                <p>{{ flashcard[0] }}</p>
+            </div>
+            <div class="back">
+                <p>{{ flashcard[1] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class='card-nav'>
+        {% if card_index > 0 %}
+            <a href="{{ url_for('list_card', list_id=list_id, card_index=card_index-1) }}">
+                <button>Previous</button>
+            </a>
+        {% endif %}
+
+        {% if card_index < total_cards - 1 %}
+            <a href="{{ url_for('list_card', list_id=list_id, card_index=card_index+1) }}">
+                <button>Next</button>
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
