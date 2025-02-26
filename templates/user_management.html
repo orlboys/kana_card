@@ -1,0 +1,70 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+<div class="nav">
+    <div class="nav-item">
+        <a href="/admin_dashboard">Home</a>
+    </div>
+    <div class="nav-item">
+        <a href="/admin_dashboard/users">User Management</a>
+    </div>
+    <div class="nav-item">
+        <a href="/admin_dashboard/lists">List Management</a>
+    </div>
+    <div class="nav-item">
+        <form action="/logout" method="post">
+            <button type="submit">Logout</button>
+        </form>
+    </div>
+</div>
+
+<div class='content-container'>
+    <table class='userList'>
+        <tr>
+            <th id="id_column">User ID</th>
+            <th id="username_column">Username</th>
+            <th id="role_column">Role</th>
+            <th>Edit</th>
+            <th>Delete</th>
+        </tr>
+    
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td id="id_column">{{ user[0] }}</td>
+                <td id="username_column">{{ user[1] }}</td>
+                <td id="role_column">{% if user[2] == 1 %} admin {% else %} student {% endif %}</td>
+                <td class="edit">
+                    <button class="edit-btn" title="Edit" onclick="openEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ 'admin' if user[2] else 'student' }}')">&#9998;</button>
+                </td>
+                <td class="delete">
+                    <form action="{{ url_for('delete_user') }}" method="POST">
+                        <input type="hidden" name="delete_index" value="{{ user[0] }}">
+                        <button class="delete-btn" title="Delete">&#128465;</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditModal()">&times;</span>
+        <form action="{{ url_for('save_user') }}" method="POST">
+            <input type="hidden" name="edit_index" id="edit_index">
+            <label for="new_username">Username:</label>
+            <input type="text" name="new_username" id="new_username">
+            <label for="new_role">Role:</label>
+            <select name="new_role" id="new_role">
+                <option value="student">Student</option>
+                <option value="admin">Admin</option>
+            </select>
+            <button type="submit">Save</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

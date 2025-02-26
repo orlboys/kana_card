@@ -19,26 +19,12 @@
             </form>
         </div>
     </div>
-    
-    <div class="content-container">
-        <div class="student-home-title">
-            <h1>Welcome, {{ session['username'] }}</h1>
-        </div>
-        <div class="student-home-content">
-            <p>Assigned Lists:</p>
-            <div class="student-home-lists">
-                {% for list in lists %}
-                <div class="student-home-list">
-                    <!-- <a href="/student_list/{{ list['id'] }}">{{ list['name'] }}</a> -->
-                </div>
-                {% endfor %}`
-        </div>
-    
+</div>
 
 <div class="content-container">
     <div class="dashboard-container">
         <div class="dashboard-title">
-            <h1 class="title">Dashboard</h1>
+            <h1 class="title">Welcome {{ session['username'] }}</h1>
         </div>
 
         <div class="dashboard-content">

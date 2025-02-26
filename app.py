@@ -229,7 +229,13 @@ def list_card(list_id, card_index=0):
 def admin_dashboard():
     if not session.get('logged_in') or not session.get('admin'):
         return redirect('/login')
-    
+    return render_template('admin_dashboard.html')
+
+@app.route('/list_dashboard', methods=['GET', 'POST'])
+def list_management():
+    if not session.get('logged_in') or not session.get('admin'):
+        return redirect('/login')
+
     def get_all_lists():
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -238,6 +244,56 @@ def admin_dashboard():
         lists = cursor.fetchall()
         conn.close()
         return lists
-    
-    return render_template('admin_dashboard.html', lists = get_all_lists())
 
+    return render_template('list_management.html', lists = get_all_lists())
+
+## USER MANAGEMENT ##
+
+@app.route('/admin_dashboard/users', methods=['GET', 'POST'])
+def user_management():
+    if not session.get('logged_in') or not session.get('admin'):
+        return redirect('/login')
+
+    def get_all_users():
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id, username, admin FROM users')
+        users = cursor.fetchall()
+        conn.close()
+        return users
+
+    return render_template('user_management.html', users=get_all_users())
+
+@app.route('/save_user', methods=["POST"])
+def save_user():
+    user_id = request.form.get("edit_index")
+    new_username = request.form.get("new_username")
+    new_role = request.form.get("new_role")
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET username = ?, admin = ? WHERE id = ?",
+        (new_username, new_role == 'admin', user_id)
+    )
+    conn.commit()
+    conn.close()
+    return redirect('/admin_dashboard/users')
+
+@app.route('/delete_user', methods=["POST"])
+def delete_user():
+    user_id = request.form.get("delete_index")
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute(
+        "DELETE FROM users WHERE id = ?",
+        (user_id,)
+    )
+    conn.commit()
+    conn.close()
+    return redirect('/admin_dashboard/users')
+
+@app.route('/edit_user', methods=["POST"])
+def edit_user():
+    item_id = request.form.get("edit_index")
