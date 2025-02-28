@@ -9,15 +9,28 @@ document.addEventListener("DOMContentLoaded", function () { // Wait for the DOM 
     });
 });
 
-// Modal Functionality
-// Note: by doing it in the JavaScript, we make the process smoother than if we were to implement a backend solution. We edit the DOM directly, rather than having to reload the page.
-function openEditModal(id, username, email, role) { // Opens the edit modal with the given user data
+// MODALS //
+
+// Ideally, polymorphism would work here. However, it isn't, so we're doing this instead :)
+// Modal Functionality for User Editing
+function openUserEditModal(id, username, role) { // Opens the edit modal with the given user data
     document.getElementById('edit_index').value = id;
     document.getElementById('new_username').value = username;
     document.getElementById('new_role').value = role;
     document.getElementById('editUserModal').style.display = 'block';
 }
 
-function closeEditModal() { // Closes the edit modal
+function closeUserEditModal() { // Closes the edit modal
     document.getElementById('editUserModal').style.display = 'none';
+}
+
+// Modal Functionality for List Editing
+function openListEditModal(listId, listName) { // Opens the edit modal with the given list data
+    document.getElementById('edit_index').value = listId;
+    document.getElementById('new_listname').value = listName;
+    document.getElementById('editListModal').style.display = 'block';
+}
+
+function closeListEditModal() { // Closes the edit modal
+    document.getElementById('editListModal').style.display = 'none';
 }

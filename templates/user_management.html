@@ -35,11 +35,12 @@
                 <td id="username_column">{{ user[1] }}</td>
                 <td id="role_column">{% if user[2] == 1 %} admin {% else %} student {% endif %}</td>
                 <td class="edit">
-                    <button class="edit-btn" title="Edit" onclick="openEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ 'admin' if user[2] else 'student' }}')">&#9998;</button>
+                    <button class="edit-btn" title="Edit" onclick="openUserEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ 'admin' if user[2] else 'student' }}')">&#9998;</button>
                 </td>
                 <td class="delete">
-                    <form action="{{ url_for('delete_user') }}" method="POST">
+                    <form action="{{ url_for('delete_item') }}" method="POST">
                         <input type="hidden" name="delete_index" value="{{ user[0] }}">
+                        <input type="hidden" name="delete_type" value="user">
                         <button class="delete-btn" title="Delete">&#128465;</button>
                     </form>
                 </td>
@@ -52,9 +53,10 @@
 <!-- Edit User Modal -->
 <div id="editUserModal" class="modal">
     <div class="modal-content">
-        <span class="close" onclick="closeEditModal()">&times;</span>
-        <form action="{{ url_for('save_user') }}" method="POST">
+        <span class="close" onclick="closeUserEditModal()">&times;</span>
+        <form action="{{ url_for('edit_item') }}" method="POST">
             <input type="hidden" name="edit_index" id="edit_index">
+            <input type="hidden" name="edit_type" value="user">
             <label for="new_username">Username:</label>
             <input type="text" name="new_username" id="new_username">
             <label for="new_role">Role:</label>
@@ -66,5 +68,4 @@
         </form>
     </div>
 </div>
-
 {% endblock %}

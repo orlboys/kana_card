@@ -231,7 +231,7 @@ def admin_dashboard():
         return redirect('/login')
     return render_template('admin_dashboard.html')
 
-@app.route('/list_dashboard', methods=['GET', 'POST'])
+@app.route('/admin_dashboard/lists', methods=['GET', 'POST'])
 def list_management():
     if not session.get('logged_in') or not session.get('admin'):
         return redirect('/login')
@@ -240,7 +240,7 @@ def list_management():
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
 
-        cursor.execute('SELECT list_name FROM flashcard_lists')
+        cursor.execute('SELECT list_id, list_name FROM flashcard_lists')
         lists = cursor.fetchall()
         conn.close()
         return lists
@@ -265,35 +265,57 @@ def user_management():
 
     return render_template('user_management.html', users=get_all_users())
 
-@app.route('/save_user', methods=["POST"])
-def save_user():
+@app.route('/edit_item', methods=["POST"])
+def edit_item():
     user_id = request.form.get("edit_index")
     new_username = request.form.get("new_username")
     new_role = request.form.get("new_role")
+    type = request.form.get("edit_type")
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE users SET username = ?, admin = ? WHERE id = ?",
-        (new_username, new_role == 'admin', user_id)
-    )
+    if type == "list":
+        new_listname = request.form.get("new_listname")
+        cursor.execute(
+            "UPDATE flashcard_lists SET list_name = ? WHERE list_id = ?",
+            (new_listname, user_id)
+        )
+    elif type == "user":
+        cursor.execute(
+            "UPDATE users SET username = ?, admin = ? WHERE id = ?",
+            (new_username, new_role == 'admin', user_id)
+        )
+        
     conn.commit()
     conn.close()
-    return redirect('/admin_dashboard/users')
+    if type == "list":
+        return redirect('/admin_dashboard/lists')
+    elif type == "user":
+        return redirect('/admin_dashboard/users')
+    else:
+        return redirect('/admin_dashboard')
 
-@app.route('/delete_user', methods=["POST"])
-def delete_user():
-    user_id = request.form.get("delete_index")
+@app.route('/delete_item', methods=["POST"])
+def delete_item():
+    id = request.form.get("delete_index")
+    type = request.form.get("delete_type")
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM users WHERE id = ?",
-        (user_id,)
-    )
+    if type == "list":
+        cursor.execute(
+            "DELETE FROM flashcard_lists WHERE list_id = ?",
+            (id,)
+        )
+    elif type == "user":
+        cursor.execute(
+            "DELETE FROM users WHERE id = ?",
+            (id,)
+        )
     conn.commit()
     conn.close()
-    return redirect('/admin_dashboard/users')
-
-@app.route('/edit_user', methods=["POST"])
-def edit_user():
-    item_id = request.form.get("edit_index")
+    if type == "list":
+        return redirect('/admin_dashboard/lists')
+    elif type == "user":
+        return redirect('/admin_dashboard/users')
+    else:
+        return redirect('/admin_dashboard')
