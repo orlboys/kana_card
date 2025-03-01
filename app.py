@@ -139,7 +139,9 @@ def register():
             list_result = cursor.fetchone()
             if list_result:
                 list_id = list_result[0]
-                cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (list_id, user_id))
+                cursor.execute('SELECT COUNT(*) FROM list_students WHERE list_id = ? AND student_id = ?', (list_id, user_id))
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (list_id, user_id))
                 conn.commit()
 
             flash('Registration successful.')
@@ -323,7 +325,7 @@ def delete_item():
     else:
         return redirect('/admin_dashboard')
 
-@app.route('/add_list', methods=['GET', 'POST'])
+@app.route('/admin_dashboard/lists/add_list', methods=['GET', 'POST'])
 def add_list():
     if not session.get('logged_in') or not session.get('admin'):
         return redirect('/login')
@@ -361,6 +363,45 @@ def add_list():
         conn.commit()
         conn.close()
 
+        flash('List added successfully', 'success')
         return redirect('/admin_dashboard/lists')
 
     return render_template('add_list.html')
+
+@app.route('/admin_dashboard/lists/assign_lists', methods=['GET', 'POST'])
+def assign_lists():
+    if not session.get('logged_in') or not session.get('admin'):
+        return redirect('/login')
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        listname = request.form.get('listname')
+        user_id = cursor.execute('SELECT user_id FROM students WHERE username = ?', (username,)).fetchone()[0]
+        list_id = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()[0]
+
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        is_student = cursor.execute('SELECT COUNT(*) FROM students WHERE user_id = ?', (user_id,)).fetchone()[0] > 0
+        is_list = cursor.execute('SELECT COUNT(*) FROM flashcard_lists WHERE list_id = ?', (list_id,)).fetchone()[0] > 0
+        if not is_student:
+            flash('User is not a student', 'error')
+            return redirect('/admin_dashboard/lists/assign_lists')
+        if not is_list:
+            flash('List does not exist', 'error')
+            return redirect('/admin_dashboard/lists/assign_lists')
+        
+
+        cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (user_id, list_id))
+        if cursor.fetchone()[0] > 0:
+            flash('List already assigned to user', 'error')
+            return redirect('/admin_dashboard/lists/assign_lists')
+        
+        cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (user_id, list_id))
+
+        conn.commit()
+        conn.close()
+
+        flash('List assigned successfully', 'success')
+        return redirect('/admin_dashboard/lists')
+
+    return render_template('assign_list.html')
