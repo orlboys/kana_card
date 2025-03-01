@@ -34,3 +34,28 @@ function openListEditModal(listId, listName) { // Opens the edit modal with the 
 function closeListEditModal() { // Closes the edit modal
     document.getElementById('editListModal').style.display = 'none';
 }
+
+// FLASHCARD ADDING FUNCTIONALITY //
+let flashcardCount = 1;
+
+function addFlashcard() {
+    flashcardCount++;
+    document.getElementById('flashcard_count').value = flashcardCount; // Update the hidden input field
+    const container = document.getElementById('flashcards-container');
+    const flashcardDiv = document.createElement('div');
+    flashcardDiv.className = 'flashcard';
+    flashcardDiv.innerHTML = `
+        <label for="flashcard_question_${flashcardCount}">Question:</label>
+        <input type="text" name="flashcard_question_${flashcardCount}" id="flashcard_question_${flashcardCount}" placeholder="Question" required>
+        <label for="flashcard_answer_${flashcardCount}">Answer:</label>
+        <input type="text" name="flashcard_answer_${flashcardCount}" id="flashcard_answer_${flashcardCount}" placeholder="Answer" required>
+        <input type="button" value="Remove" onclick="removeFlashcard(this)">
+    `;
+    container.appendChild(flashcardDiv);
+}
+
+function removeFlashcard(button) {
+    button.parentElement.remove();
+    flashcardCount--;
+    document.getElementById('flashcard_count').value = flashcardCount; // Update the hidden input field
+}

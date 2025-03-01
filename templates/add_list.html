@@ -1,0 +1,44 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+<div class="nav">
+    <div class="nav-item">
+        <a href="/admin_dashboard">Home</a>
+    </div>
+    <div class="nav-item">
+        <a href="/admin_dashboard/users">User Management</a>
+    </div>
+    <div class="nav-item">
+        <a href="/admin_dashboard/lists">List Management</a>
+    </div>
+    <div class="nav-item">
+        <form action="/logout" method="post">
+            <button type="submit">Logout</button>
+        </form>
+    </div>
+</div>
+
+<div class='content-container'>
+    <h1>Add New List</h1>
+    <form action="{{ url_for('add_list') }}" method="POST">
+        <label for="list_name">List Name:</label>
+        <input type="text" name="list_name" id="list_name" required>
+
+        <div id="flashcards-container">
+            <div class="flashcard">
+                <label for="flashcard_question_1">Question:</label>
+                <input type="text" name="flashcard_question_1" id="flashcard_question_1" placeholder="Question" required>
+                <label for="flashcard_answer_1">Answer:</label>
+                <input type="text" name="flashcard_answer_1" id="flashcard_answer_1" placeholder="Answer" required>
+                <input type="button" value="Remove" onclick="removeFlashcard(this)">
+            </div>
+        </div>
+
+        <input type="hidden" name="flashcard_count" id="flashcard_count" value="1">
+        <br>
+        <button type="button" onclick="addFlashcard()">Add Another Flashcard</button>
+        <button type="submit">Save List</button>
+    </form>
+</div>
+
+{% endblock %}

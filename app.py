@@ -306,6 +306,9 @@ def delete_item():
             "DELETE FROM flashcard_lists WHERE list_id = ?",
             (id,)
         )
+        cursor.execute(
+            "DELETE FROM flashcards WHERE list_id = ?", 
+            (id,))
     elif type == "user":
         cursor.execute(
             "DELETE FROM users WHERE id = ?",
@@ -319,3 +322,45 @@ def delete_item():
         return redirect('/admin_dashboard/users')
     else:
         return redirect('/admin_dashboard')
+
+@app.route('/add_list', methods=['GET', 'POST'])
+def add_list():
+    if not session.get('logged_in') or not session.get('admin'):
+        return redirect('/login')
+
+    if request.method == 'POST':
+        list_name = request.form.get('list_name')
+        flashcard_count = request.form.get('flashcard_count')  # Get the flashcard count from the form
+
+        if flashcard_count is None:
+            flashcard_count = 0
+        else:
+            flashcard_count = int(flashcard_count)
+        
+        # Collect flashcards
+        flashcards = []
+        for i in range(1, flashcard_count + 1):
+            question = request.form.get(f'flashcard_question_{i}')
+            answer = request.form.get(f'flashcard_answer_{i}')
+            if question and answer:
+                flashcards.append((question, answer))
+
+        print(flashcards)
+
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+
+        # Insert the new list
+        cursor.execute('INSERT INTO flashcard_lists (list_name) VALUES (?)', (list_name,))
+        list_id = cursor.lastrowid
+
+        # Insert the flashcards
+        for question, answer in flashcards:
+            cursor.execute('INSERT INTO flashcards (list_id, question, answer) VALUES (?, ?, ?)', (list_id, question, answer))
+
+        conn.commit()
+        conn.close()
+
+        return redirect('/admin_dashboard/lists')
+
+    return render_template('add_list.html')
