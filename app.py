@@ -6,6 +6,7 @@ app.secret_key = 'placeholder_secret_key' #change this for deployment >:(
 
 def init_db():
     conn = sqlite3.connect('database.db')
+    conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
     c = conn.cursor()
 
     # USER MANAGEMENT TABLES #
@@ -23,12 +24,10 @@ def init_db():
         student_id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER UNIQUE NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        
     )
     ''')
 
     # LIST MANAGEMENT TABLES #
-
     c.execute('''
     CREATE TABLE IF NOT EXISTS flashcard_lists (
         list_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,12 +55,6 @@ def init_db():
         FOREIGN KEY (list_id) REFERENCES flashcard_lists(list_id) ON DELETE CASCADE
     )
     ''')
-
-    # ADD TABLE FOR STUDENTS, ADMINS SEPERATELY
-
-    # ADD TABLE FOR LISTS, AND CONNECT THEM TO USERS (MANY TO MANY)
-
-    # BASICALLY, JUST LOOK AT THE ERD !
 
     conn.commit()
     conn.close()
@@ -138,6 +131,7 @@ def register():
             cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction"')
             list_result = cursor.fetchone()
             if list_result:
+                user_id = user_result[0]
                 list_id = list_result[0]
                 cursor.execute('SELECT COUNT(*) FROM list_students WHERE list_id = ? AND student_id = ?', (list_id, user_id))
                 if cursor.fetchone()[0] == 0:
@@ -302,6 +296,7 @@ def delete_item():
     id = request.form.get("delete_index")
     type = request.form.get("delete_type")
     conn = sqlite3.connect('database.db')
+    conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
     cursor = conn.cursor()
     if type == "list":
         cursor.execute(
@@ -376,32 +371,48 @@ def assign_lists():
     if request.method == 'POST':
         username = request.form.get('username')
         listname = request.form.get('listname')
-        user_id = cursor.execute('SELECT user_id FROM students WHERE username = ?', (username,)).fetchone()[0]
-        list_id = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()[0]
 
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        is_student = cursor.execute('SELECT COUNT(*) FROM students WHERE user_id = ?', (user_id,)).fetchone()[0] > 0
-        is_list = cursor.execute('SELECT COUNT(*) FROM flashcard_lists WHERE list_id = ?', (list_id,)).fetchone()[0] > 0
-        if not is_student:
-            flash('User is not a student', 'error')
-            return redirect('/admin_dashboard/lists/assign_lists')
-        if not is_list:
-            flash('List does not exist', 'error')
-            return redirect('/admin_dashboard/lists/assign_lists')
-        
+        try:
+            conn = sqlite3.connect('database.db')
+            conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
+            cursor = conn.cursor()
+            
+            user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+            if user_result is None:
+                flash('User does not exist', 'error')
+                return redirect('/admin_dashboard/lists/assign_lists')
+            
+            list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()
+            if list_result is None:
+                flash('List does not exist', 'error')
+                return redirect('/admin_dashboard/lists/assign_lists')
+            
+            user_id = user_result[0]
+            list_id = list_result[0]
 
-        cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (user_id, list_id))
-        if cursor.fetchone()[0] > 0:
-            flash('List already assigned to user', 'error')
-            return redirect('/admin_dashboard/lists/assign_lists')
-        
-        cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (user_id, list_id))
+            student_result = cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,)).fetchone()
+            if student_result is None:
+                flash('User is not a student', 'error')
+                return redirect('/admin_dashboard/lists/assign_lists')
+            
+            student_id = student_result[0]
 
-        conn.commit()
-        conn.close()
+            cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (student_id, list_id))
+            if cursor.fetchone()[0] > 0:
+                flash('List already assigned to user', 'error')
+                return redirect('/admin_dashboard/lists/assign_lists')
+            
+            cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (student_id, list_id))
 
-        flash('List assigned successfully', 'success')
+            conn.commit()
+            flash('List assigned successfully', 'success')
+        except sqlite3.IntegrityError as e:
+            flash(f'Integrity error: {e}', 'error')
+        except sqlite3.Error as e:
+            flash(f'Database error: {e}', 'error')
+        finally:
+            conn.close()
+
         return redirect('/admin_dashboard/lists')
 
     return render_template('assign_list.html')
