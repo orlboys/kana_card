@@ -53,7 +53,7 @@
 <!-- Edit List Modal -->
 <div id="editListModal" class="modal">
     <div class="modal-content">
-        <span class="close" onclick="closeListEditModal()">&times;</span>
+        <span class="edit_title">Edit List</span>
         <form action="{{ url_for('edit_item') }}" method="POST">
             <input type="hidden" name="edit_index" id="edit_index">
             <input type="hidden" name="edit_type" value="list">
@@ -61,6 +61,7 @@
             <input type="text" name="new_listname" id="new_listname">
             <button type="submit">Save</button>
         </form>
+        <span class="close" onclick="closeListEditModal()">&times;</span>
     </div>
 </div>
 {% endblock %}

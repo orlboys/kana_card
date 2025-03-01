@@ -11,7 +11,7 @@
 
 /* The card element with front and back faces */
 .card {
-    width: 100%;
+    max-width: 200px; /* Set a specific max-width */
     height: 100%;
     position: relative;
     transform-style: preserve-3d; /* Enables 3D transformations */
@@ -55,7 +55,6 @@
 /* Modal Styling */
 
 .modal { /* The area where you can see the modal */
-    display: none;
     position: fixed;
     z-index: 1;
     left: 0;
@@ -63,8 +62,10 @@
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgb(0,0,0);
-    background-color: rgba(0,0,0,0.4);
+    background-color: rgba(0,0,0,0.4); /* Semi-transparent background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .modal-content { /* the content of the modal */
@@ -74,8 +75,15 @@
     align-items: center;
     flex-direction: column;
     font-family: 'Montserrat', sans-serif;
-    height: 100vh;
-    margin: -20px 0 50px 0;
+    padding: 20px;
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+    width: 80%;
+    max-width: 500px;
+    margin: auto; /* Center the modal content */
+    position: relative; /* Ensure it is positioned relative to the modal */
+    top: 50%; /* Move it down 50% of the modal's height */
+    transform: translateY(-50%); /* Move it up 50% of its own height to center it */
 }
 
 .modal-content h1 {
@@ -99,7 +107,8 @@
 }
 
 .modal-content button:active {
-    transform: scale(0.95);
+    transform: scale(0.98);
+    transition: transform 0.2s ease;
 }
 
 .modal-content input {

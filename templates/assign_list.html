@@ -20,10 +20,24 @@
 </div>
 
 <form action="{{ url_for('assign_lists') }}" method="POST">
-    <label for="user_id">Student Username:</label>
-    <input type="text" name="username" id="username" required>
-    <label for="list_id">List Name:</label>
-    <input type="text" name="listname" id="listname" required>
+    <label for="username">Student Username:</label>
+    <input type="text" list="usernames" name="username" id="username" required>
+    <label for="listname">List Name:</label>
+    <input type="text" list="listnames" name="listname" id="listname" required>
     <button type="submit">Assign List</button>
+
+    <!-- These datalists inform the autofill of all values into the input sections. -->
+    <datalist id="usernames">
+        {% for item in usernames %}
+            <option value="{{ item }}">
+        {% endfor %}
+    </datalist>
+
+    <datalist id="listnames">
+        {% for item in listnames %}
+            <option value="{{ item }}">
+        {% endfor %}
+    </datalist>
+
 </form>
 {% endblock %}

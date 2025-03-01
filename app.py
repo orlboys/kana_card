@@ -1,3 +1,9 @@
+# Description: This file contains the main Flask application for the Flashcard Web Application.
+# IMPROVEMENTS TO MAKE:
+# - reduce repetition, especially in the database connection and closing functions.
+# - add more error handling and validation for the forms.
+# - add more comments to explain the logic of the code.
+
 import sqlite3
 from flask import Flask, render_template, request, redirect, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -367,8 +373,20 @@ def add_list():
 def assign_lists():
     if not session.get('logged_in') or not session.get('admin'):
         return redirect('/login')
-    
-    if request.method == 'POST':
+
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+
+    # Fetch all usernames and list names for the datalists
+    cursor.execute('SELECT username FROM students JOIN users ON students.user_id = users.id')
+    usernames = [row[0] for row in cursor.fetchall()]
+
+    cursor.execute('SELECT list_name FROM flashcard_lists')
+    listnames = [row[0] for row in cursor.fetchall()]
+
+    conn.close()
+
+    if request.method == 'POST': # Since the GET request will be loading the page, whereas the POST request will be submitting the form
         username = request.form.get('username')
         listname = request.form.get('listname')
 
@@ -376,17 +394,17 @@ def assign_lists():
             conn = sqlite3.connect('database.db')
             conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
             cursor = conn.cursor()
-            
+
             user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
             if user_result is None:
                 flash('User does not exist', 'error')
                 return redirect('/admin_dashboard/lists/assign_lists')
-            
+
             list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()
             if list_result is None:
                 flash('List does not exist', 'error')
                 return redirect('/admin_dashboard/lists/assign_lists')
-            
+
             user_id = user_result[0]
             list_id = list_result[0]
 
@@ -394,25 +412,25 @@ def assign_lists():
             if student_result is None:
                 flash('User is not a student', 'error')
                 return redirect('/admin_dashboard/lists/assign_lists')
-            
+
             student_id = student_result[0]
 
             cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (student_id, list_id))
             if cursor.fetchone()[0] > 0:
                 flash('List already assigned to user', 'error')
                 return redirect('/admin_dashboard/lists/assign_lists')
-            
+
             cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (student_id, list_id))
 
             conn.commit()
             flash('List assigned successfully', 'success')
-        except sqlite3.IntegrityError as e:
+        except sqlite3.IntegrityError as e:  # using this to catch the foreign key constraint error
             flash(f'Integrity error: {e}', 'error')
-        except sqlite3.Error as e:
+        except sqlite3.Error as e:  # using this to catch any other database error
             flash(f'Database error: {e}', 'error')
-        finally:
+        finally:  # will always run - connection with the database must always be closed
             conn.close()
 
         return redirect('/admin_dashboard/lists')
 
-    return render_template('assign_list.html')
+    return render_template('assign_list.html', usernames=usernames, listnames=listnames)
