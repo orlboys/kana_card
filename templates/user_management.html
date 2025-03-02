@@ -1,22 +1,6 @@
-{% extends 'layout.html' %}
+{% extends 'layout-admin.html' %}
 
 {% block body %}
-<div class="nav">
-    <div class="nav-item">
-        <a href="/admin_dashboard">Home</a>
-    </div>
-    <div class="nav-item">
-        <a href="/admin_dashboard/users">User Management</a>
-    </div>
-    <div class="nav-item">
-        <a href="/admin_dashboard/lists">List Management</a>
-    </div>
-    <div class="nav-item">
-        <form action="/logout" method="post">
-            <button type="submit">Logout</button>
-        </form>
-    </div>
-</div>
 
 <div class='content-container'>
     <table class='userList'>
@@ -53,7 +37,6 @@
 <!-- Edit User Modal -->
 <div id="editUserModal" class="modal">
     <div class="modal-content">
-        <span class="close" onclick="closeUserEditModal()">&times;</span>
         <form action="{{ url_for('edit_item') }}" method="POST">
             <input type="hidden" name="edit_index" id="edit_index">
             <input type="hidden" name="edit_type" value="user">
@@ -66,6 +49,7 @@
             </select>
             <button type="submit">Save</button>
         </form>
+        <span class="close" onclick="closeUserEditModal()">&times;</span>
     </div>
 </div>
 {% endblock %}

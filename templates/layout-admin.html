@@ -1,0 +1,42 @@
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <title>KanaCard</title>
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class='flash-messages'>
+                {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    <div class="wrapper">
+        
+        <div class="nav">
+            <ul>
+                <li class="nav-item {% if request.path == '/admin_dashboard' %}active{% endif %}">
+                    <a href="/admin_dashboard">Home</a>
+                </li>
+                <li class="nav-item {% if request.path == '/admin_dashboard/users' %}active{% endif %}">
+                    <a href="/admin_dashboard/users">User Management</a>
+                </li>
+                <li class="nav-item {% if request.path == '/admin_dashboard/lists' %}active{% endif %}">
+                    <a href="/admin_dashboard/lists">List Management</a>
+                </li>
+                <li class="nav-item logout-item">
+                    <form action="/logout" method="post">
+                        <button type="submit" class="logout-button">Logout</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+
+        {% block body %}{% endblock %}
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

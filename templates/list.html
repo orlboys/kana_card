@@ -1,20 +1,7 @@
-{% extends "layout.html" %}
+{% extends "layout-student.html" %}
 
 {% block body %}
 
-<div class='nav'>
-    <div class='nav-item'>
-        <a href='/student_dashboard'>Home</a>
-    </div>
-    <div class='nav-item'>
-        <a href='/student_profile'>Profile</a>
-    </div>
-    <div class='nav-item'>
-        <form action='/logout' method='post'>
-            <button type='submit'>Logout</button>
-        </form>
-    </div>
-</div>
 <div>
     <h1>{{ list_name }}</h1>
     <div class='card-container'>

@@ -1,6 +1,79 @@
+/* Reset default margin and padding */
 * {
-	box-sizing: border-box;
-}   
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* Navigation Styling */
+.nav {
+    background-color: #f8f9fa;
+    width: 100%; /* Ensure the nav fills the width of the viewport */
+    display: flex;
+    justify-content: center; /* Center the nav items horizontally */
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex; /* Use flexbox for the list items */
+    width: 100%; /* Ensure the ul fills the width of the nav */
+    justify-content: space-between; /* Distribute the list items evenly */
+    background-color: #333;
+    align-items: center; /* Align items vertically */
+}
+
+li {
+    float: left;
+}
+
+li a {
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 25px 25px;
+    text-decoration: none;
+}
+
+/* Change the link color to #111 (black) on hover */
+li a:hover {
+    background-color: #111;
+}
+
+/* Active navigation link styling */
+.nav-item.active a {
+    background-color: #4CAF50; /* Green background for active link */
+    color: white; /* White text for active link */
+}
+
+/* Logout button styling */
+.logout-item {
+    margin-left: auto; /* Push the logout button to the right */
+}
+
+.logout-button {
+    background-color: #f44336; /* Red background */
+    color: white; /* White text */
+    border: none; /* Remove borders */
+    padding: 25px 25px; /* Add padding */
+    text-align: center; /* Center text */
+    text-decoration: none; /* Remove underline */
+    display: block; /* Make it block to fill the li */
+    font-size: 16px; /* Increase font size */
+    cursor: pointer; /* Add cursor pointer */
+    border-radius: 0; /* Remove rounded corners */
+    width: 100%; /* Ensure it fills the li */
+    height: 100%; /* Ensure it fills the li */
+}
+
+/* flashcard styling */
 
 /* Container for the card with 3D perspective */
 .card-container {

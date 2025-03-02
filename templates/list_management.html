@@ -1,23 +1,6 @@
-{% extends 'layout.html' %}
+{% extends 'layout-admin.html' %}
 
 {% block body %}
-<div class="nav">
-    <div class="nav-item">
-        <a href="/admin_dashboard">Home</a>
-    </div>
-    <div class="nav-item">
-        <a href="/admin_dashboard/users">User Management</a>
-    </div>
-    <div class="nav-item">
-        <a href="/admin_dashboard/lists">List Management</a>
-    </div>
-    <div class="nav-item">
-        <form action="/logout" method="post">
-            <button type="submit">Logout</button>
-        </form>
-    </div>
-</div>
-
 <div class='content-container'>
     <table class='listList'>
         <tr>
