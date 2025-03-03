@@ -16,7 +16,7 @@
     {% endwith %}
     <div class="wrapper">
         
-        <div class="nav">
+        <nav>
             <ul>
                 <li class="nav-item {% if request.path == '/admin_dashboard' %}active{% endif %}">
                     <a href="/admin_dashboard">Home</a>
@@ -33,7 +33,7 @@
                     </form>
                 </li>
             </ul>
-        </div>
+        </nav>
 
         {% block body %}{% endblock %}
     </div>
