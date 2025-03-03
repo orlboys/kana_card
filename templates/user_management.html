@@ -6,12 +6,12 @@
     <table class='userList table table-striped'>
         <thead>
             <tr>
-                <th>User ID</th>
+                <th class="non-priority-column">User ID</th>
                 <th>Username</th>
-                <th>First Name</th>
-                <th>Last Name</th>
+                <th class="non-priority-column">First Name</th>
+                <th class="non-priority-column">Last Name</th>
                 <th>Email</th>
-                <th>Role</th>
+                <th class="non-priority-column">Role</th>
                 <th>Edit</th>
                 <th>Delete</th>
             </tr>
@@ -26,13 +26,13 @@
                 <td>{{ user[4] }}</td>
                 <td>{% if user[5] == 1 %} admin {% else %} student {% endif %}</td>
                 <td>
-                    <button class="btn btn-primary" title="Edit" onclick="openUserEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ user[2] }}', '{{ user[3] }}', '{{ user[4] }}', '{{ 'admin' if user[5] else 'student' }}')">Edit</button>
+                    <button class="btn btn-primary" title="Edit" onclick="openUserEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ user[2] }}', '{{ user[3] }}', '{{ user[4] }}', '{{ 'admin' if user[5] else 'student' }}')">&#9998;</button>
                 </td>
                 <td>
                     <form action="{{ url_for('delete_item') }}" method="POST">
                         <input type="hidden" name="delete_index" value="{{ user[0] }}">
                         <input type="hidden" name="delete_type" value="user">
-                        <button class="btn btn-danger" title="Delete">Delete</button>
+                        <button class="btn btn-danger" title="Delete">&#128465;</button>
                     </form>
                 </td>
             </tr>

@@ -2,49 +2,61 @@
 
 {% block body %}
 <div class='content-container'>
-    <table class='listList'>
-        <tr>
-            <th id="id_column">List ID</th>
-            <th id="list_name_column">List Name</th>
-            <th>Edit</th>
-            <th>Delete</th>
-        </tr>
-    
+    <table class='listList table table-dark table-striped table-bordered table-hover table-responsive{-md}'> 
+        <thead>
+            <tr>
+                <th class="non-priority-column">List ID</th>
+                <th>List Name</th>
+                <th>Edit</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
         <tbody>
             {% for list in lists %}
             <tr>
-            <td id="id_column">{{ list[0] }}</td>
-            <td id="list_name_column">{{ list[1] }}</td>
-            <td class="edit">
-                <button class="edit-btn" title="Edit" onclick="openListEditModal('{{ list[0] }}', '{{ list[1] }}')">&#9998;</button>
-            </td>
-            <td class="delete">
-                <form action="{{ url_for('delete_item') }}" method="POST">
-                    <input type="hidden" name="delete_index" value="{{ list[0] }}">
-                    <input type="hidden" name="delete_type" value="list">
-                    <button class="delete-btn" title="Delete">&#128465;</button>
-                </form>
-            </td>
+                <td class="non-priority-column">{{ list[0] }}</td>
+                <td>{{ list[1] }}</td>
+                <td class="edit">
+                    <button class="btn btn-primary" title="Edit" onclick="openListEditModal('{{ list[0] }}', '{{ list[1] }}')">&#9998;</button>
+                </td>
+                <td class="delete">
+                    <form action="{{ url_for('delete_item') }}" method="POST">
+                        <input type="hidden" name="delete_index" value="{{ list[0] }}">
+                        <input type="hidden" name="delete_type" value="list">
+                        <button class="btn btn-danger" title="Delete">&#128465;</button>
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    <button onclick="window.location.href='/admin_dashboard/lists/add_list'">Add New List</button>
-    <button onclick="window.location.href='/admin_dashboard/lists/assign_lists'">Assign Lists</button>
+    <div class="button-container mt-4 mb-4 text-center d-flex flex-wrap justify-content-center">
+        <button class="btn btn-primary m-2" onclick="window.location.href='/admin_dashboard/lists/add_list'">Add New List</button>
+        <button class="btn btn-primary m-2" onclick="window.location.href='/admin_dashboard/lists/assign_lists'">Assign Lists</button>
+    </div>
 </div>
 
 <!-- Edit List Modal -->
-<div id="editListModal" class="modal">
-    <div class="modal-content">
-        <span class="edit_title">Edit List</span>
-        <form action="{{ url_for('edit_item') }}" method="POST">
-            <input type="hidden" name="edit_index" id="edit_index">
-            <input type="hidden" name="edit_type" value="list">
-            <label for="new_listname">List Name:</label>
-            <input type="text" name="new_listname" id="new_listname">
-            <button type="submit">Save</button>
-        </form>
-        <span class="close" onclick="closeListEditModal()">&times;</span>
+<!-- Note that i probably want this to lead to a seperate page with all of the flashcards, but for now this is ok. -->
+<div id="editListModal" class="modal fade" tabindex="-1" aria-labelledby="editListModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editListModalLabel">Edit List</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('edit_item') }}" method="POST">
+                    <input type="hidden" name="edit_index" id="edit_index">
+                    <input type="hidden" name="edit_type" value="list">
+                    <div class="mb-3">
+                        <label for="new_listname" class="form-label">List Name:</label>
+                        <input type="text" class="form-control" name="new_listname" id="new_listname">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

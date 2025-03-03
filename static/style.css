@@ -57,23 +57,25 @@
 }
 
 /* Modal Styling */
-/* Add this CSS to your stylesheet or within a <style> tag in your HTML file */
+/* Modal body styling */
+/* .modal-body { */
+    /* background-color: white; Ensure the modal body has a solid background color */
+    /* padding: 20px; Add some padding for better appearance */
+/* } */
 
-.modal-body {
-    background-color: white; /* Ensure the modal body has a solid background color */
-    padding: 20px; /* Add some padding for better appearance */
-}
+/* Modal header styling */
+/* .modal-header { */
+    /* background-color: #f8f9fa; Light grey background for the header */
+    /* border-bottom: 1px solid #dee2e6; Add a border to separate the header */
+/* } */
 
-.modal-header {
-    background-color: #f8f9fa; /* Light grey background for the header */
-    border-bottom: 1px solid #dee2e6; /* Add a border to separate the header */
-}
+/* Modal content styling */
+/* .modal-content { */
+    /* background-color: white; Ensure the entire modal content has a solid background color */
+    /* border-radius: 5px; Optional: Add rounded corners */
+    /* box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5); Optional: Add a shadow for better visibility */
+/* } */
 
-.modal-content {
-    background-color: white; /* Ensure the entire modal content has a solid background color */
-    border-radius: 5px; /* Optional: Add rounded corners */
-    box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5); /* Optional: Add a shadow for better visibility */
-}
 /* Navbar Styling */
 
 @media (min-width: 990px) {
@@ -116,4 +118,11 @@
 
 .student-home-lists .btn {
     margin-top: auto;
+}
+
+/* List Page Styling */
+@media screen and (max-width: 767px) { /* aligns with md breakpoint */
+    .non-priority-column {
+        display: none;
+    }
 }
