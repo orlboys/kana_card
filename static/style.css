@@ -4,17 +4,17 @@
 }
 
 
-/* flashcard styling */
+/* flashcard-temp styling */
 
-/* Container for the card with 3D perspective */
-.card-container {
+/* Container for the card-temp with 3D perspective */
+.card-temp-container {
     width: 300px; /* Set desired width */
     height: 200px; /* Set desired height */
     perspective: 1000px; /* Creates the 3D effect */
 }
 
-/* The card element with front and back faces */
-.card {
+/* The card-temp element with front and back faces */
+.card-temp {
     max-width: 200px; /* Set a specific max-width */
     height: 100%;
     position: relative;
@@ -22,14 +22,14 @@
     transition: transform 0.6s; /* Smooth transition for the flip */
 }
 
-/* Apply rotation when the card is flipped */
-.card-container.flipped .card {
+/* Apply rotation when the card-temp is flipped */
+.card-temp-container.flipped .card-temp {
     transform: rotateY(180deg);
 }
 
 /* Common styles for both front and back faces */
-.card .front,
-.card .back {
+.card-temp .front,
+.card-temp .back {
     position: absolute;
     width: 100%;
     height: 100%;
@@ -46,12 +46,12 @@
 }
 
 /* Specific styles for the front face */
-.card .front {
+.card-temp .front {
     background-color: #f8f9fa; /* Light gray background */
 }
 
 /* Specific styles for the back face */
-.card .back {
+.card-temp .back {
     background-color: #ffc107; /* Amber background */
     transform: rotateY(180deg); /* Back face is rotated 180 degrees */
 }
@@ -99,19 +99,19 @@
     border-radius: 10px;
 }
 
-.student-home-lists .card {
+.student-home-lists .card-temp {
     border: 1px solid #ddd;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.student-home-lists .card-body {
+.student-home-lists .card-temp-body {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-.student-home-lists .card-title {
+.student-home-lists .card-temp-title {
     margin-bottom: 10px;
     font-size: 1.25rem;
 }

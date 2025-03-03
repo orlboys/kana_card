@@ -50,13 +50,19 @@ function addFlashcard() {
     document.getElementById('flashcard_count').value = flashcardCount; // Update the hidden input field
     const container = document.getElementById('flashcards-container');
     const flashcardDiv = document.createElement('div');
-    flashcardDiv.className = 'flashcard';
+    flashcardDiv.className = 'flashcards-container';
     flashcardDiv.innerHTML = `
-        <label for="flashcard_question_${flashcardCount}">Question:</label>
-        <input type="text" name="flashcard_question_${flashcardCount}" id="flashcard_question_${flashcardCount}" placeholder="Question" required>
-        <label for="flashcard_answer_${flashcardCount}">Answer:</label>
-        <input type="text" name="flashcard_answer_${flashcardCount}" id="flashcard_answer_${flashcardCount}" placeholder="Answer" required>
-        <input type="button" value="Remove" onclick="removeFlashcard(this)">
+        <div class="flashcard my-3">
+            <div class="form-group">
+                <label for="flashcard_question_${flashcardCount}">Question ${flashcardCount}:</label>
+                <input type="text" class="form-control" name="flashcard_question_${flashcardCount}" id="flashcard_question_${flashcardCount}" placeholder="Question" required>
+            </div>
+            <div class="form-group">
+                <label for="flashcard_answer_${flashcardCount}">Answer ${flashcardCount}:</label>
+                <input type="text" class="form-control" name="flashcard_answer_${flashcardCount}" id="flashcard_answer_${flashcardCount}" placeholder="Answer" required>
+            </div>
+            <button type="button" class="btn btn-danger" onclick="removeFlashcard(this)">Remove</button>
+        </div>
     `;
     container.appendChild(flashcardDiv);
 }
