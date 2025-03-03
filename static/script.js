@@ -13,26 +13,33 @@ document.addEventListener("DOMContentLoaded", function () { // Wait for the DOM 
 
 // Ideally, polymorphism would work here. However, it isn't, so we're doing this instead :)
 // Modal Functionality for User Editing
-function openUserEditModal(id, username, role) { // Opens the edit modal with the given user data
+function openUserEditModal(id, username, f_name, l_name, email, role) { // Opens the edit modal with the given user data
     document.getElementById('edit_index').value = id;
     document.getElementById('new_username').value = username;
+    document.getElementById('new_first_name').value = f_name;
+    document.getElementById('new_last_name').value = l_name;
+    document.getElementById('new_email').value = email;
     document.getElementById('new_role').value = role;
-    document.getElementById('editUserModal').style.display = 'block';
+    var editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+    editUserModal.show();
 }
 
 function closeUserEditModal() { // Closes the edit modal
-    document.getElementById('editUserModal').style.display = 'none';
+    var editUserModal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+    editUserModal.hide();
 }
 
 // Modal Functionality for List Editing
 function openListEditModal(listId, listName) { // Opens the edit modal with the given list data
     document.getElementById('edit_index').value = listId;
     document.getElementById('new_listname').value = listName;
-    document.getElementById('editListModal').style.display = 'block';
+    var editListModal = new bootstrap.Modal(document.getElementById('editListModal'));
+    editListModal.show();
 }
 
 function closeListEditModal() { // Closes the edit modal
-    document.getElementById('editListModal').style.display = 'none';
+    var editListModal = bootstrap.Modal.getInstance(document.getElementById('editListModal'));
+    editListModal.hide();
 }
 
 // FLASHCARD ADDING FUNCTIONALITY //
