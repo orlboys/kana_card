@@ -22,15 +22,33 @@
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            {% if session.get('logged_in') and not session.get('admin') %}
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav mr-auto">
-                    <li class="nav-item">
+                    {% if session['admin'] and session['logged_in'] %}
+                    <li class="nav-item {% if request.path == '/admin_dashboard' %} active {% endif %}">
+                        <a class="nav-link" href="/admin_dashboard">Home</a>
+                    </li>
+                    <li class="nav-item {% if request.path == '/admin_dashboard/users' %}active{% endif %}">
+                        <a class="nav-link" href="/admin_dashboard/users">User Management</a>
+                    </li>
+                    <li class="nav-item {% if request.path == '/admin_dashboard/lists' %}active{% endif %}">
+                        <a class="nav-link" href="/admin_dashboard/lists">List Management</a>
+                    </li>
+                    {% elif not session['admin'] and session['logged_in'] %}
+                    <li class="nav-item {% if request.path == '/student_dashboard' %}active{% endif %}">
                         <a class="nav-link" href="/student_dashboard">Home</a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item {% if request.path == '/student_profile' %}active{% endif %}">
                         <a class="nav-link" href="/student_profile">Profile</a>
                     </li>
+                    {% elif not session['logged_in'] %}
+                    <li class="nav-item {% if request.path == '/login' %}active{% endif %}">
+                        <a class="nav-link" href="/login">Login</a>
+                    </li>
+                    <li class="nav-item {% if request.path == '/register' %}active{% endif %}">
+                        <a class="nav-link" href="/register">Register</a>
+                    </li>
+                    {% endif %}
                 </ul>
                 <ul class="navbar-nav ml-auto">
                     <li class="nav-item">
@@ -40,18 +58,6 @@
                     </li>
                 </ul>
             </div>
-            {% else %}
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav mr-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/login">Login</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/register">Register</a>
-                    </li>
-                </ul>
-            </div>
-            {% endif %}
         </nav>
         
         {% block body %}{% endblock %}

@@ -1,4 +1,4 @@
-{% extends 'layout-admin.html' %}
+{% extends 'layout.html' %}
 
 {% block body %}
 
@@ -7,12 +7,12 @@
     <table class='userList table table-dark table-striped table-bordered table-hover table-responsive{-md}'>
         <thead>
             <tr>
-                <th class="non-priority-column">User ID</th>
+                <th class="non-priority">User ID</th>
                 <th>Username</th>
-                <th class="non-priority-column">First Name</th>
-                <th class="non-priority-column">Last Name</th>
+                <th class="non-priority">First Name</th>
+                <th class="non-priority">Last Name</th>
                 <th>Email</th>
-                <th class="non-priority-column">Role</th>
+                <th class="non-priority">Role</th>
                 <th>Edit</th>
                 <th>Delete</th>
             </tr>
@@ -20,12 +20,12 @@
         <tbody>
             {% for user in users %}
             <tr>
-                <td>{{ user[0] }}</td>
+                <td class="non-priority">{{ user[0] }}</td>
                 <td>{{ user[1] }}</td>
-                <td>{{ user[2] }}</td>
-                <td>{{ user[3] }}</td>
+                <td class="non-priority">{{ user[2] }}</td>
+                <td class="non-priority">{{ user[3] }}</td>
                 <td>{{ user[4] }}</td>
-                <td>{% if user[5] == 1 %} admin {% else %} student {% endif %}</td>
+                <td class="non-priority">{% if user[5] == 1 %} admin {% else %} student {% endif %}</td>
                 <td>
                     <button class="btn btn-primary" title="Edit" onclick="openUserEditModal('{{ user[0] }}', '{{ user[1] }}', '{{ user[2] }}', '{{ user[3] }}', '{{ user[4] }}', '{{ 'admin' if user[5] else 'student' }}')">&#9998;</button>
                 </td>

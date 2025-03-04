@@ -1,4 +1,4 @@
-{% extends 'layout-admin.html' %}
+{% extends 'layout.html' %}
 
 {% block body %}
 <div class='content-container'>
@@ -6,7 +6,7 @@
     <table class='listList table table-dark table-striped table-bordered table-hover table-responsive{-md}'> 
         <thead>
             <tr>
-                <th class="non-priority-column">List ID</th>
+                <th class="non-priority">List ID</th>
                 <th>List Name</th>
                 <th>Edit</th>
                 <th>Delete</th>
@@ -15,7 +15,7 @@
         <tbody>
             {% for list in lists %}
             <tr>
-                <td class="non-priority-column">{{ list[0] }}</td>
+                <td class="non-priority">{{ list[0] }}</td>
                 <td>{{ list[1] }}</td>
                 <td class="edit">
                     <button class="btn btn-primary" title="Edit" onclick="openListEditModal('{{ list[0] }}', '{{ list[1] }}')">&#9998;</button>
