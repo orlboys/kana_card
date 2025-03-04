@@ -84,7 +84,7 @@ def index():
 
 ## ACCOUNT MANAGEMENT ##
 
-@app.route('/login', methods=['GET','POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST': #i.e. if its a form submission
         username = request.form['username']
@@ -100,8 +100,17 @@ def login():
             session['logged_in'] = True
             session['user_id'] = user[0]
             session['username'] = user[1]
-            session['admin'] = user[3]
+            session['f_name'] = user[3]
+            session['l_name'] = user[4]
+            session['email'] = user[5]
+            session['admin'] = user[6]  # Assuming admin is the 7th column
             flash('You were successfully logged in')
+            print("Logged in as:", session.get('username'))
+            print("Admin status:", session.get('admin'))
+            print("User ID:", session.get('user_id'))
+            print("Email:", session.get('email'))
+            print("First Name:", session.get('f_name'))
+            print("Last Name:", session.get('l_name'))
             return redirect('/')
         else:
             flash('Invalid credentials')
@@ -114,6 +123,9 @@ def register():
     if request.method == 'POST': #i.e. if its a form submission
         username = request.form['username']
         password = request.form['password']
+        f_name = request.form['first-name']
+        l_name = request.form['last-name']
+        email = request.form['email']
         hashed_password = generate_password_hash(password)
 
         conn = sqlite3.connect('database.db')
@@ -126,7 +138,7 @@ def register():
             flash('User already exists.', 'error')
         else:
             #Inserting into the Users Table
-            cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
+            cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (username, hashed_password, f_name, l_name, email, False))
             conn.commit()
 
             #Getting the user_id of the user that was just inserted
@@ -137,13 +149,11 @@ def register():
             conn.commit()
 
             #Adding a default list for the user
-            cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction"')
+            cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction" AND list_id = 10')
             list_result = cursor.fetchone()
             if list_result:
-                list_id = list_result[0]
-                cursor.execute('SELECT COUNT(*) FROM list_students WHERE list_id = ? AND student_id = ?', (list_id, user_id))
-                if cursor.fetchone()[0] == 0:
-                    cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (list_id, user_id))
+                if cursor.fetchone() == 0:
+                    cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, user_id))
                 conn.commit()
 
             flash('Registration successful.')
@@ -235,6 +245,8 @@ def admin_dashboard():
         return redirect('/login')
     return render_template('admin_dashboard.html')
 
+## LIST MANAGEMENT ##
+
 @app.route('/admin_dashboard/lists', methods=['GET', 'POST'])
 def list_management():
     if not session.get('logged_in') or not session.get('admin'):
@@ -248,8 +260,26 @@ def list_management():
         lists = cursor.fetchall()
         conn.close()
         return lists
+    
+    def get_all_usernames():
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
 
-    return render_template('list_management.html', lists = get_all_lists())
+        cursor.execute('SELECT username FROM users')
+        usernames = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return usernames
+
+    def get_all_listnames():
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT list_name FROM flashcard_lists')
+        listnames = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return listnames
+
+    return render_template('list_management.html', lists = get_all_lists(), usernames = get_all_usernames(), listnames = get_all_listnames())
 
 ## USER MANAGEMENT ##
 
@@ -388,68 +418,53 @@ def add_list():
 
     return render_template('add_list.html')
 
-@app.route('/admin_dashboard/lists/assign_lists', methods=['GET', 'POST'])
+@app.route('/assign_lists', methods=['POST'])
 def assign_lists():
     if not session.get('logged_in') or not session.get('admin'):
         return redirect('/login')
 
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
+    username = request.form.get('username')
+    listname = request.form.get('listname')
 
-    # Fetch all usernames and list names for the datalists
-    cursor.execute('SELECT username FROM students JOIN users ON students.user_id = users.id')
-    usernames = [row[0] for row in cursor.fetchall()]
+    try:
+        conn = sqlite3.connect('database.db')
+        conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
+        cursor = conn.cursor()
 
-    cursor.execute('SELECT list_name FROM flashcard_lists')
-    listnames = [row[0] for row in cursor.fetchall()]
+        user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+        if user_result is None:
+            flash('User does not exist', 'error')
+            return redirect('/admin_dashboard/lists')
 
-    conn.close()
+        list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()
+        if list_result is None:
+            flash('List does not exist', 'error')
+            return redirect('/admin_dashboard/lists')
 
-    if request.method == 'POST': # Since the GET request will be loading the page, whereas the POST request will be submitting the form
-        username = request.form.get('username')
-        listname = request.form.get('listname')
+        user_id = user_result[0]
+        list_id = list_result[0]
 
-        try:
-            conn = sqlite3.connect('database.db')
-            conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
-            cursor = conn.cursor()
+        student_result = cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,)).fetchone()
+        if student_result is None:
+            flash('User is not a student', 'error')
+            return redirect('/admin_dashboard/lists')
 
-            user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
-            if user_result is None:
-                flash('User does not exist', 'error')
-                return redirect('/admin_dashboard/lists/assign_lists')
+        student_id = student_result[0]
 
-            list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()
-            if list_result is None:
-                flash('List does not exist', 'error')
-                return redirect('/admin_dashboard/lists/assign_lists')
+        cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (student_id, list_id))
+        if cursor.fetchone()[0] > 0:
+            flash('List already assigned to user', 'error')
+            return redirect('/admin_dashboard/lists')
 
-            user_id = user_result[0]
-            list_id = list_result[0]
+        cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (student_id, list_id))
 
-            student_result = cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,)).fetchone()
-            if student_result is None:
-                flash('User is not a student', 'error')
-                return redirect('/admin_dashboard/lists/assign_lists')
+        conn.commit()
+        flash('List assigned successfully', 'success')
+    except sqlite3.IntegrityError as e:  # using this to catch the foreign key constraint error
+        flash(f'Integrity error: {e}', 'error')
+    except sqlite3.Error as e:  # using this to catch any other database error
+        flash(f'Database error: {e}', 'error')
+    finally:  # will always run - connection with the database must always be closed
+        conn.close()
 
-            student_id = student_result[0]
-
-            cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (student_id, list_id))
-            if cursor.fetchone()[0] > 0:
-                flash('List already assigned to user', 'error')
-                return redirect('/admin_dashboard/lists/assign_lists')
-
-            cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (student_id, list_id))
-
-            conn.commit()
-            flash('List assigned successfully', 'success')
-        except sqlite3.IntegrityError as e:  # using this to catch the foreign key constraint error
-            flash(f'Integrity error: {e}', 'error')
-        except sqlite3.Error as e:  # using this to catch any other database error
-            flash(f'Database error: {e}', 'error')
-        finally:  # will always run - connection with the database must always be closed
-            conn.close()
-
-        return redirect('/admin_dashboard/lists')
-
-    return render_template('assign_list.html', usernames=usernames, listnames=listnames)
+    return redirect('/admin_dashboard/lists')

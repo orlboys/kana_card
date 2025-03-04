@@ -2,6 +2,7 @@
 
 {% block body %}
 <div class='content-container'>
+    <h1 class='title mb-3 border-bottom'>List Management</h1>
     <table class='listList table table-dark table-striped table-bordered table-hover table-responsive{-md}'> 
         <thead>
             <tr>
@@ -30,9 +31,16 @@
             {% endfor %}
         </tbody>
     </table>
+    <div class='search-container mt-4 mb-4'>
+        <label for='search'>Search:</label>
+        <input type='text' id='search' class='form-control' onkeyup='searchListTable()' placeholder='Search for lists...'>
+    </div>
+    <div class='alert alert-danger' id='search-error' style='display: none;'>
+        No results found.
+    </div>
     <div class="button-container mt-4 mb-4 text-center d-flex flex-wrap justify-content-center">
         <button class="btn btn-primary m-2" data-toggle="modal" data-target="#addListModal">Add New List</button>
-        <button class="btn btn-primary m-2" onclick="window.location.href='/admin_dashboard/lists/assign_lists'">Assign Lists</button>
+        <button class="btn btn-primary m-2" data-toggle="modal" data-target="#assignListModal">Assign Lists</button>
     </div>
 </div>
 
@@ -102,4 +110,44 @@
     </div>
 </div>
 
+<!-- Assign List Modal -->
+<div class="modal fade" id="assignListModal" tabindex="-1" role="dialog" aria-labelledby="addListModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addListModalLabel">Assign List</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('assign_lists') }}" method="POST">
+                    <div class="form-group my-3">
+                        <label for="list_name">Student Username:</label>
+                        <input type="text" list="usernames" class="form-control" name="username" id="username" required>
+                        <!-- Datalist for Username Autofill -->
+                        <datalist id="usernames">
+                            {% for item in usernames %}
+                                <option value="{{ item }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div class="form-group my-3">
+                        <label for="list_name">List Name:</label>
+                        <input type="text" list="listnames" class="form-control" name="listname" id="listname" required>
+                        <!-- Datalist for List Autofill -->
+                        <datalist id="listnames">
+                            {% for item in listnames %}
+                                <option value="{{ item }}">
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div class="modal-footer"></div>
+                        <button type="submit" class="btn btn-primary">Assign List</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
