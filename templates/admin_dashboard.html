@@ -2,26 +2,35 @@
 
 {% block body %}
 
-<div class="content-container">
-    <div class="dashboard-container">
-        <div class="dashboard-title">
-            <h1 class="title">Welcome {{ session['username'] }}</h1>
-        </div>
-
-        <div class="dashboard-content">
-            <div class="dashboard-item">
-                <h2>Users</h2>
-                <p>View and manage users.</p>
-                <a href="/admin_dashboard/users">View Users</a>
-            </div>
-            <div class="dashboard-item">
-                <h2>Lists</h2>
-                <p>View and manage lists.</p>
-                <a href="/admin_dashboard/lists">View Lists</a>
+<div class="container-fluid">
+    <div class="row mt-5 mx-1 border-bottom">
+        <div class="col-12">
+            <div class="dashboard-title">
+                <h1 class="title">Welcome {{ session['username'] }}</h1>
             </div>
         </div>
     </div>
-
+    <div class="row mt-5">
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">User Management</h5>
+                    <p class="card-text">View and manage users.</p>
+                    <a href="/admin_dashboard/users" class="btn btn-primary">View Users</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">List Management</h5>
+                    <p class="card-text">View and manage lists.</p>
+                    <a href="/admin_dashboard/lists" class="btn btn-primary">View Lists</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
 
 {% endblock %}

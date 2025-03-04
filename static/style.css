@@ -3,96 +3,18 @@
     box-sizing: border-box;
 }
 
-html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;   
-    font-family: 'Montserrat', sans-serif;
-}
 
-/* Navigation Bar Styling */
+/* flashcard-temp styling */
 
-.nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.75em 2em;
-    background-color: #5e42a6;
-    color: white;
-}
-
-.nav > ul {
-    display: flex;
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-}
-
-.nav > ul > li {
-    display: inline-block;
-    margin-left: 1.75em;
-    padding: 0;
-    vertical-align: middle;
-}
-
-.nav > ul > li:first-child {
-    margin-left: 0;
-}
-
-.nav > ul > li > a {
-    border: 0;
-    color: rgba(255, 255, 255, 0.35);
-    display: inline-block;
-    font-size: 0.6em;
-    font-weight: bold;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    text-decoration: none;
-}
-
-.nav > ul > li > a:hover {
-    color: rgba(255, 255, 255, 0.55);
-}
-
-.nav > ul > li > a.active {
-    color: #ffffff;
-}
-
-@media screen and (max-width: 736px) {
-    .nav {
-        padding: 1em 2em;
-    }
-}
-
-@media screen and (max-width: 480px) {
-    .nav {
-        display: block;
-        padding: 0 2em;
-        text-align: left;
-    }
-
-    .nav > ul > li {
-        margin-left: 1.5em;
-    }
-
-    .nav > ul > li > a {
-        height: 6em;
-        line-height: 6em;
-    }
-}
-
-/* flashcard styling */
-
-/* Container for the card with 3D perspective */
-.card-container {
+/* Container for the card-temp with 3D perspective */
+.card-temp-container {
     width: 300px; /* Set desired width */
     height: 200px; /* Set desired height */
     perspective: 1000px; /* Creates the 3D effect */
 }
 
-/* The card element with front and back faces */
-.card {
+/* The card-temp element with front and back faces */
+.card-temp {
     max-width: 200px; /* Set a specific max-width */
     height: 100%;
     position: relative;
@@ -100,14 +22,14 @@ html, body {
     transition: transform 0.6s; /* Smooth transition for the flip */
 }
 
-/* Apply rotation when the card is flipped */
-.card-container.flipped .card {
+/* Apply rotation when the card-temp is flipped */
+.card-temp-container.flipped .card-temp {
     transform: rotateY(180deg);
 }
 
 /* Common styles for both front and back faces */
-.card .front,
-.card .back {
+.card-temp .front,
+.card-temp .back {
     position: absolute;
     width: 100%;
     height: 100%;
@@ -124,95 +46,83 @@ html, body {
 }
 
 /* Specific styles for the front face */
-.card .front {
+.card-temp .front {
     background-color: #f8f9fa; /* Light gray background */
 }
 
 /* Specific styles for the back face */
-.card .back {
+.card-temp .back {
     background-color: #ffc107; /* Amber background */
     transform: rotateY(180deg); /* Back face is rotated 180 degrees */
 }
 
 /* Modal Styling */
+/* Modal body styling */
+/* .modal-body { */
+    /* background-color: white; Ensure the modal body has a solid background color */
+    /* padding: 20px; Add some padding for better appearance */
+/* } */
 
-.modal { /* The area where you can see the modal */
-    position: fixed;
-    z-index: 1;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.4); /* Semi-transparent background */
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* Modal header styling */
+/* .modal-header { */
+    /* background-color: #f8f9fa; Light grey background for the header */
+    /* border-bottom: 1px solid #dee2e6; Add a border to separate the header */
+/* } */
+
+/* Modal content styling */
+/* .modal-content { */
+    /* background-color: white; Ensure the entire modal content has a solid background color */
+    /* border-radius: 5px; Optional: Add rounded corners */
+    /* box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5); Optional: Add a shadow for better visibility */
+/* } */
+
+/* Navbar Styling */
+
+@media (min-width: 990px) {
+    nav.navbar {
+    height: 90px;
+    }
 }
 
-.modal-content { /* the content of the modal */
-    background-color: #f6f5f7;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    font-family: 'Montserrat', sans-serif;
+/* Student Home Page Styling */
+.content-container {
     padding: 20px;
-    border-radius: 10px; /* Rounded corners */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
-    width: 80%;
-    max-width: 500px;
-    margin: auto; /* Center the modal content */
-    position: relative; /* Ensure it is positioned relative to the modal */
-    top: 50%; /* Move it down 50% of the modal's height */
-    transform: translateY(-50%); /* Move it up 50% of its own height to center it */
 }
 
-.modal-content h1 {
-    font-size: 24px;
+.student-home-title {
     margin-bottom: 20px;
 }
 
-.modal-content p {
-    font-size: 18px;
-    margin-bottom: 20px;
+.student-home-content {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
 }
 
-.modal-content button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 14px 20px;
-    margin: 8px 0;
-    border: none;
-    cursor: pointer;
-    width: 100%;
+.student-home-lists .card-temp {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.modal-content button:active {
-    transform: scale(0.98);
-    transition: transform 0.2s ease;
+.student-home-lists .card-temp-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-.modal-content input {
-    width: 100%;
-    padding: 12px 20px;
-    margin: 8px 0;
-    display: inline-block;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
+.student-home-lists .card-temp-title {
+    margin-bottom: 10px;
+    font-size: 1.25rem;
 }
 
-/* The close button */
-.close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
+.student-home-lists .btn {
+    margin-top: auto;
 }
 
-.close:hover,
-.close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
+/* List Page Styling */
+@media screen and (max-width: 767px) { /* aligns with md breakpoint */
+    .non-priority-column {
+        display: none;
+    }
 }
