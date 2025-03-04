@@ -7,9 +7,18 @@
 import sqlite3
 from flask import Flask, render_template, request, redirect, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
+import re
+from markupsafe import escape
+
 app = Flask(__name__)
 app.secret_key = 'placeholder_secret_key' #change this for deployment >:(
 
+# Input Validation
+
+def is_valid_item(item):
+    return isinstance(item, str) and 0 < len(item) <= 255 and re.match(r'^[a-zA-Z0-9_ ]+$', item)
+
+# Database Initialisation
 def init_db():
     conn = sqlite3.connect('database.db')
     conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
@@ -67,6 +76,7 @@ def init_db():
 
     conn.commit()
     conn.close()
+
 init_db()
 
 @app.route('/')
@@ -90,10 +100,16 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
+        # Input Validation
+
+        if not is_valid_item(username) or not is_valid_item(password):
+            flash('Invalid Input', 'error')
+            return redirect('/login')
+
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
 
-        cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+        cursor.execute('SELECT * FROM users WHERE username = ?', (escape(username),))
         user = cursor.fetchone()
         conn.close()
         if user and check_password_hash(user[2], password):
@@ -113,7 +129,7 @@ def login():
             print("Last Name:", session.get('l_name'))
             return redirect('/')
         else:
-            flash('Invalid credentials')
+            flash('Invalid credentials', 'error')
     
     return render_template('login.html')
 
@@ -126,19 +142,25 @@ def register():
         f_name = request.form['first-name']
         l_name = request.form['last-name']
         email = request.form['email']
+
+        # Input Validation
+        if not all(map(is_valid_item, [username, password, f_name, l_name, email])):
+            flash('Invalid Input', 'error')
+            return redirect('/register')
+
         hashed_password = generate_password_hash(password)
 
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
 
-        cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', (username,))
+        cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', (escape(username),))
         user_exists = cursor.fetchone()[0] > 0
 
         if user_exists:
             flash('User already exists.', 'error')
         else:
             #Inserting into the Users Table
-            cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (username, hashed_password, f_name, l_name, email, False))
+            cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (escape(username), escape(hashed_password), escape(f_name), escape(l_name), escape(email), False))
             conn.commit()
 
             #Getting the user_id of the user that was just inserted
@@ -303,25 +325,37 @@ def user_management():
 @app.route('/edit_item', methods=["POST"])
 def edit_item():
     type = request.form.get("edit_type")
+    id = request.form.get("edit_index")
     print("Edit Type:", type)
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     if type == "list":
         new_listname = request.form.get("new_listname")
+
+        # Input Validation
+        if not is_valid_item(new_listname):
+            flash('Invalid Input', 'error')
+            return redirect('/admin_dashboard/lists')
+
         print("New List Name:", new_listname)
         cursor.execute(
             "UPDATE flashcard_lists SET list_name = ? WHERE list_id = ?",
-            (new_listname, user_id)
+            (escape(new_listname), id)
         )
     elif type == "user":
-        user_id = request.form.get("edit_index")
         new_username = request.form.get("new_username")
         new_first_name = request.form.get("new_first_name")
         new_last_name = request.form.get("new_last_name")
         new_email = request.form.get("new_email")
         new_role = request.form.get("new_role")
-        print("User ID:", user_id)
+
+        # Input Validation
+        if not all(map(is_valid_item, [new_username, new_first_name, new_last_name, new_email])):
+            flash('Invalid Input', 'error')
+            return redirect('/admin_dashboard/users')
+
+        print("User ID:", id)
         print("New Username:", new_username)
         print("New First Name:", new_first_name)
         print("New Last Name:", new_last_name)
@@ -331,7 +365,7 @@ def edit_item():
         try:
             cursor.execute(
                 "UPDATE users SET username = ?, f_name = ?, l_name = ?, email = ?, admin = ? WHERE id = ?",
-                (new_username, new_first_name, new_last_name, new_email, admin_value, user_id)
+                (escape(new_username), escape(new_first_name), escape(new_last_name), escape(new_email), admin_value, id)
             )
         except sqlite3.Error as e:
             flash(f'Database error: {e}', 'error')
@@ -384,6 +418,11 @@ def add_list():
         list_name = request.form.get('list_name')
         flashcard_count = request.form.get('flashcard_count')  # Get the flashcard count from the form
 
+        # Input Validation
+        if not is_valid_item(list_name):
+            flash('Invalid Input', 'error')
+            return redirect('/admin_dashboard/lists')
+        
         if flashcard_count is None:
             flashcard_count = 0
         else:
@@ -397,18 +436,20 @@ def add_list():
             if question and answer:
                 flashcards.append((question, answer))
 
-        print(flashcards)
+        #Input Validation
+        if not all(map(is_valid_item, ([question, answer] for question, answer in flashcards))):
+            flash('Invalid Input', 'error')
 
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
 
         # Insert the new list
-        cursor.execute('INSERT INTO flashcard_lists (list_name) VALUES (?)', (list_name,))
+        cursor.execute('INSERT INTO flashcard_lists (list_name) VALUES (?)', (escape(list_name,)))
         list_id = cursor.lastrowid
 
         # Insert the flashcards
         for question, answer in flashcards:
-            cursor.execute('INSERT INTO flashcards (list_id, question, answer) VALUES (?, ?, ?)', (list_id, question, answer))
+            cursor.execute('INSERT INTO flashcards (list_id, question, answer) VALUES (?, ?, ?)', (list_id, escape(question), escape(answer)))
 
         conn.commit()
         conn.close()
@@ -425,18 +466,22 @@ def assign_lists():
 
     username = request.form.get('username')
     listname = request.form.get('listname')
-
+    # Input Validation
+    if not is_valid_item(username) or not is_valid_item(listname):
+        flash('Invalid Input', 'error')
+        return redirect('/admin_dashboard/lists')
+    
     try:
         conn = sqlite3.connect('database.db')
         conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
         cursor = conn.cursor()
 
-        user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+        user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (escape(username),)).fetchone()
         if user_result is None:
             flash('User does not exist', 'error')
             return redirect('/admin_dashboard/lists')
 
-        list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()
+        list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (escape(listname),)).fetchone()
         if list_result is None:
             flash('List does not exist', 'error')
             return redirect('/admin_dashboard/lists')

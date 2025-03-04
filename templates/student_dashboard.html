@@ -12,7 +12,7 @@
             <div class="student-home-lists d-flex flex-wrap justify-content-flex-start col-8 border-right mt-2">
                 {% for list in lists %}
                 <div class="col-sm-8 col-md-8 col-lg-4 mb-4">
-                    <div class="card text-light border-light" style="background-color: #353535;">
+                    <div class="card text-light border-light bg-dark">
                         <div class="card-body text-center d-flex flex-column">
                             <h5 class="card-title mb-3">{{ list['name'] }}</h5>
                             <a href="/student_list/{{ list['id'] }}/0" class="btn btn-secondary mt-auto">View List</a>
@@ -22,7 +22,7 @@
                 {% endfor %}
             </div>
             <div class="user-profile col-4">
-                <div class="card bg-dark text-light border-light mt-3">
+                <div class="card bg-dark text-light border-light mt-2">
                     <div class="card-body text-center">
                         <div class="mt-3 mb-4">
                             <img src="{{ url_for('static', filename='user_icon.png') }}" alt="Profile Picture"
