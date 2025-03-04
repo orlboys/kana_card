@@ -3,6 +3,7 @@
 {% block body %}
 
 <div class='content-container'>
+    <h1 class='title mb-3'>User Management</h1>
     <table class='userList table table-dark table-striped table-bordered table-hover table-responsive{-md}'>
         <thead>
             <tr>
@@ -39,10 +40,17 @@
             {% endfor %}
         </tbody>
     </table>
+    <div class='search-container mt-4 mb-4'>
+        <label for='search'>Search:</label>
+        <input type='text' id='search' class='form-control' onkeyup='searchUserTable()' placeholder='Search for users...'>
+    </div>
+    <div class='alert alert-danger' id='search-error' style='display: none;'>
+        No results found.
+    </div>
 </div>
 
 <!-- Edit User Modal -->
-<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+<div class="modal hide fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">

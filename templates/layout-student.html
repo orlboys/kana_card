@@ -17,12 +17,12 @@
     {% endwith %}
     
     <div class="wrapper">
-        <nav class="custom-nav-styling navbar navbar-expand-lg navbar-dark bg-dark align-items-center" style="box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.1);">
-
+        <nav class="custom-nav-styling navbar navbar-expand-lg navbar-dark bg-dark align-items-center sticky-top" style="box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.1);">
             <a class="navbar-brand" href="#">KanaCard</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            {% if session.get('logged_in') and not session.get('admin') %}
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav mr-auto">
                     <li class="nav-item">
@@ -40,6 +40,18 @@
                     </li>
                 </ul>
             </div>
+            {% else %}
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">Register</a>
+                    </li>
+                </ul>
+            </div>
+            {% endif %}
         </nav>
         
         {% block body %}{% endblock %}

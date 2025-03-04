@@ -1,0 +1,50 @@
+{% extends 'layout-admin.html' %}
+
+{% block body %}
+
+<!-- Button to open the modal -->
+<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addListModal">
+    Add New List
+</button>
+
+<!-- The Modal -->
+<div class="modal fade" id="addListModal" tabindex="-1" role="dialog" aria-labelledby="addListModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addListModalLabel">Add New List</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('add_list') }}" method="POST">
+                    <div class="form-group">
+                        <label for="list_name">List Name:</label>
+                        <input type="text" class="form-control" name="list_name" id="list_name" required>
+                    </div>
+                    <div id="flashcards-container">
+                        <div class="flashcard my-3">
+                            <div class="form-group">
+                                <label for="flashcard_question_1">Question:</label>
+                                <input type="text" class="form-control" name="flashcard_question_1" id="flashcard_question_1" placeholder="Question" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="flashcard_answer_1">Answer:</label>
+                                <input type="text" class="form-control" name="flashcard_answer_1" id="flashcard_answer_1" placeholder="Answer" required>
+                            </div>
+                            <button type="button" class="btn btn-danger" onclick="removeFlashcard(this)">Remove</button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="flashcard_count" id="flashcard_count" value="1">
+                    <div class="modal-footer"></div>
+                        <button type="button" class="btn btn-secondary" onclick="addFlashcard()">Add Another Flashcard</button>
+                        <button type="submit" class="btn btn-primary">Save List</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

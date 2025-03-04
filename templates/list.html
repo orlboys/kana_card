@@ -1,33 +1,45 @@
 {% extends "layout-student.html" %}
 
 {% block body %}
-
-<div>
-    <h1>{{ list_name }}</h1>
-    <div class='card-container'>
-        <div class="card"> <!-- Toggles the 'flipped' class on click to flip the card -->
-            <div class="front">
-                <p>{{ flashcard[0] }}</p>
-            </div>
-            <div class="back">
-                <p>{{ flashcard[1] }}</p>
+<section class="bg-dark text-light min-vh-100">
+    <div class="content-container container">
+        <h1 class="text-center mt-5">{{ list_name }}</h1>
+        <div class="flashcard-container d-flex justify-content-center my-4">
+            <div class="flashcard card text-center w-50 mt-5" onclick="this.classList.toggle('flipped')"> <!-- Toggles the 'flipped' class on click to flip the flashcard -->
+                <div class="card-header bg-primary text-light border rounded shadow p-3">
+                    <h5 class="card-title">Flashcard {{ card_index + 1 }} of {{ total_cards }}</h5>
+                </div>
+                <div class="card-body front bg-secondary border rounded shadow p-3">
+                    <p class="card-text">{{ flashcard[0] }}</p>
+                </div>
+                <div class="card-body back bg-secondary border rounded shadow p-3">
+                    <p class="card-text">{{ flashcard[1] }}</p>
+                </div>
             </div>
         </div>
+
+        <div class="flashcard-nav d-flex justify-content-center mt-3">
+            {% if card_index > 0 %}
+                <a href="{{ url_for('list_card', list_id=list_id, card_index=card_index-1) }}" class="btn btn-primary btn-lrg mx-3">
+                    Previous
+                </a>
+            {% endif %}
+
+            {% if card_index < total_cards - 1 %}
+                <a href="{{ url_for('list_card', list_id=list_id, card_index=card_index+1) }}" class="btn btn-primary btn-lrg mx-3">
+                    Next
+                </a>
+            {% endif %}
+
+            {% if card_index == total_cards - 1 %}
+                <a href="{{ url_for('list_card', list_id=list_id, card_index=0) }}" class="btn btn-primary btn-lrg mx-3">
+                    Restart
+                </a>
+                <a href="{{ url_for('student_dashboard') }}" class="btn btn-danger btn-lrg mx-3" >
+                    Quit
+                </a>
+            {% endif %}
+        </div>
     </div>
-
-    <div class='card-nav'>
-        {% if card_index > 0 %}
-            <a href="{{ url_for('list_card', list_id=list_id, card_index=card_index-1) }}">
-                <button>Previous</button>
-            </a>
-        {% endif %}
-
-        {% if card_index < total_cards - 1 %}
-            <a href="{{ url_for('list_card', list_id=list_id, card_index=card_index+1) }}">
-                <button>Next</button>
-            </a>
-        {% endif %}
-    </div>
-</div>
-
+</section>
 {% endblock %}

@@ -72,3 +72,87 @@ function removeFlashcard(button) {
     flashcardCount--;
     document.getElementById('flashcard_count').value = flashcardCount; // Update the hidden input field
 }
+
+function searchListTable() {
+    // Get the input field and its value
+    var input = document.getElementById('search');
+    var filter = input.value.toLowerCase();
+    
+    // Get the table and its rows
+    var table = document.querySelector('.listList');
+    var rows = table.getElementsByTagName('tr');
+    
+    // Loop through all table rows (except the first, which contains table headers)
+    var found = false;
+    for (var i = 1; i < rows.length; i++) {
+        var cells = rows[i].getElementsByTagName('td');
+        var match = false;
+        
+        // Loop through all cells in the row
+        for (var j = 0; j < cells.length; j++) {
+            if (cells[j]) {
+                var cellValue = cells[j].textContent || cells[j].innerText;
+                if (cellValue.toLowerCase().indexOf(filter) > -1) {
+                    match = true;
+                    break;
+                }
+            }
+        }
+        
+        // Show or hide the row based on the match
+        if (match) {
+            rows[i].style.display = '';
+            found = true;
+        } else {
+            rows[i].style.display = 'none';
+        }
+    }
+    
+    // Show or hide the "No results found" message
+    var searchError = document.getElementById('search-error');
+    if (found) {
+        searchError.style.display = 'none';
+    }
+    else {
+        searchError.style.display = '';
+    }
+}
+
+function searchUserTable() {
+    var input = document.getElementById('search');
+    var filter = input.value.toLowerCase();
+
+    var table = document.querySelector('.userList');
+    var rows = table.getElementsByTagName('tr');
+
+    var found = false;
+    for (var i = 1; i < rows.length; i++) {
+        var cells = rows[i].getElementsByTagName('td');
+        var match = false;
+
+        for (var j = 0; j < cells.length; j++) {
+            if (cells[j]) {
+                var cellValue = cells[j].textContent || cells[j].innerText;
+                if (cellValue.toLowerCase().indexOf(filter) > -1) {
+                    match = true;
+                    break;
+                }
+            }
+        }
+
+        if (match) {
+            rows[i].style.display = '';
+            found = true;
+        } else {
+            rows[i].style.display = 'none';
+        }
+    }
+
+    var searchError = document.getElementById('search-error');
+    if (found) {
+        searchError.style.display = 'none';
+    } 
+    else {
+        searchError.style.display = '';
+    }
+}
