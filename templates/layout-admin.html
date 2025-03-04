@@ -1,8 +1,10 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-    <title>KanaCard</title>
+    <title>KanaCard Admin</title>
 </head>
 <body>
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -15,28 +17,38 @@
         {% endif %}
     {% endwith %}
     <div class="wrapper">
-        
-        <div class="nav">
-            <ul>
-                <li class="nav-item {% if request.path == '/admin_dashboard' %}active{% endif %}">
-                    <a href="/admin_dashboard">Home</a>
-                </li>
-                <li class="nav-item {% if request.path == '/admin_dashboard/users' %}active{% endif %}">
-                    <a href="/admin_dashboard/users">User Management</a>
-                </li>
-                <li class="nav-item {% if request.path == '/admin_dashboard/lists' %}active{% endif %}">
-                    <a href="/admin_dashboard/lists">List Management</a>
-                </li>
-                <li class="nav-item logout-item">
-                    <form action="/logout" method="post">
-                        <button type="submit" class="logout-button">Logout</button>
-                    </form>
-                </li>
-            </ul>
-        </div>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark align-items-center">
+            <a class="navbar-brand" href="#">KanaCard</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item {% if request.path == '/admin_dashboard' %}active{% endif %}">
+                        <a class="nav-link" href="/admin_dashboard">Home</a>
+                    </li>
+                    <li class="nav-item {% if request.path == '/admin_dashboard/users' %}active{% endif %}">
+                        <a class="nav-link" href="/admin_dashboard/users">User Management</a>
+                    </li>
+                    <li class="nav-item {% if request.path == '/admin_dashboard/lists' %}active{% endif %}">
+                        <a class="nav-link" href="/admin_dashboard/lists">List Management</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <form action='/logout' method='post' class="mb-0">
+                            <button type='submit' class="btn btn-outline-danger d-flex align-items-center">Logout</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </nav>
 
         {% block body %}{% endblock %}
     </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

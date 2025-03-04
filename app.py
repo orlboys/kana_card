@@ -21,6 +21,9 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL, 
         password TEXT NOT NULL,
+        f_name TEXT NOT NULL,
+        l_name TEXT NOT NULL,
+        email TEXT NOT NULL,
         admin BOOLEAN DEFAULT FALSE
     )
     ''')
@@ -137,7 +140,6 @@ def register():
             cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction"')
             list_result = cursor.fetchone()
             if list_result:
-                user_id = user_result[0]
                 list_id = list_result[0]
                 cursor.execute('SELECT COUNT(*) FROM list_students WHERE list_id = ? AND student_id = ?', (list_id, user_id))
                 if cursor.fetchone()[0] == 0:
@@ -260,8 +262,9 @@ def user_management():
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
 
-        cursor.execute('SELECT id, username, admin FROM users')
+        cursor.execute('SELECT id, username, f_name, l_name, email, admin FROM users')
         users = cursor.fetchall()
+        print("Fetched Users:", users)  # Debug print
         conn.close()
         return users
 
@@ -269,25 +272,41 @@ def user_management():
 
 @app.route('/edit_item', methods=["POST"])
 def edit_item():
-    user_id = request.form.get("edit_index")
-    new_username = request.form.get("new_username")
-    new_role = request.form.get("new_role")
     type = request.form.get("edit_type")
+    print("Edit Type:", type)
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     if type == "list":
         new_listname = request.form.get("new_listname")
+        print("New List Name:", new_listname)
         cursor.execute(
             "UPDATE flashcard_lists SET list_name = ? WHERE list_id = ?",
             (new_listname, user_id)
         )
     elif type == "user":
-        cursor.execute(
-            "UPDATE users SET username = ?, admin = ? WHERE id = ?",
-            (new_username, new_role == 'admin', user_id)
-        )
-        
+        user_id = request.form.get("edit_index")
+        new_username = request.form.get("new_username")
+        new_first_name = request.form.get("new_first_name")
+        new_last_name = request.form.get("new_last_name")
+        new_email = request.form.get("new_email")
+        new_role = request.form.get("new_role")
+        print("User ID:", user_id)
+        print("New Username:", new_username)
+        print("New First Name:", new_first_name)
+        print("New Last Name:", new_last_name)
+        print("New Email:", new_email)
+        print("New Role:", new_role)
+        admin_value = 1 if new_role == 'admin' else 0
+        try:
+            cursor.execute(
+                "UPDATE users SET username = ?, f_name = ?, l_name = ?, email = ?, admin = ? WHERE id = ?",
+                (new_username, new_first_name, new_last_name, new_email, admin_value, user_id)
+            )
+        except sqlite3.Error as e:
+            flash(f'Database error: {e}', 'error')
+            conn.rollback()
+            
     conn.commit()
     conn.close()
     if type == "list":

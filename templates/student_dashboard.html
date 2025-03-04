@@ -7,14 +7,20 @@
         <h1>Welcome, {{ session['username'] }}</h1>
     </div>
     <div class="student-home-content">
-        <p>Assigned Lists:</p>
-        <div class="student-home-lists">
+        <h2 class="mb-30">Assigned Lists:</h2>
+        <div class="student-home-lists row mt-4 justify-content-center">
             {% for list in lists %}
-            <div class="student-home-list">
-                <a href="/student_list/{{ list['id'] }}/0">{{ list['name'] }}</a>
+            <div class="col-md-4 mb-4 mx-auto">
+                <div class="card w-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">{{ list['name'] }}</h5>
+                        <a href="/student_list/{{ list['id'] }}/0" class="btn btn-primary">View List</a>
+                    </div>
+                </div>
             </div>
             {% endfor %}
         </div>
     </div>
+</div>
 
 {% endblock %}
