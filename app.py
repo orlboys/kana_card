@@ -9,6 +9,8 @@ from flask import Flask, render_template, request, redirect, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 from markupsafe import escape
+import pyotp
+import qrcode
 
 app = Flask(__name__)
 app.secret_key = 'placeholder_secret_key' #change this for deployment >:(
@@ -114,6 +116,68 @@ def login():
         user = cursor.fetchone()
         conn.close()
         if user and check_password_hash(user[2], password):
+            #MFA
+            session['pending_user'] = user[0]
+            if not user["mfa_secret"]: #if the user's first time logging in, therefore no MFA secret
+                return redirect('/mfa_setup')
+            return redirect('/verify_mfa')
+        else:
+            flash('Invalid credentials', 'error')
+    
+    return render_template('login.html')
+
+## MFA ##
+@app.route('/mfa_setup', methods=['POST'])
+def mfa_setup():
+    if 'pending_user' not in session:
+        return redirect('/login')
+    
+    user_id = session['pending_user']
+
+    # Retrieves the current MFA secret key for the user
+    conn = sqlite3.connect('database.db') # IF THERES AN ERROR HERE its because I haven't completely followed the code from the tutorial - check the get_db_connection() function from the tutorial and implement
+    cursor = conn.cursor()
+    cursor.execute("SELECT mfa_secret FROM users WHERE id = ?", (user_id,))
+    secret = cursor.fetchone()[0]
+
+    # If they don't have one, generate an MFA secret key
+    if not secret:
+        secret = pyotp.random_base32()
+        cursor.execute("UPDATE users SET mfa_secret = ? WHERE id = ?", (secret, user_id))
+        conn.commit()
+    conn.close()
+
+    # Generate a QR code for the user to scan
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=session['username'], issuer_name='Flashcard App')
+
+    qr = qrcode.make(uri)
+    qr_path = "static/qrcode.png"
+    qr.save(qr_path)
+    return render_template('mfa_setup.html', qr_path=qr_path) # AT SOME POINT - Implement this to be a modal on the login page.
+
+@app.route('/verify_mfa', methods=['GET', 'POST'])
+def verify_mfa():
+    if 'pending_user' not in session:
+        return redirect('/login')
+    
+    user_id = session['pending_user']
+    if request.method == 'POST':
+        # Retrieves the code from the form
+        otp_code = request.form['otp']
+        conn = sqlite3.connect('database.db') # IF THERES AN ERROR HERE its because I haven't completely followed the code from the tutorial - check the get_db_connection() function from the tutorial and implement
+        cursor = conn.cursor()
+        cursor.execute("SELECT mfa_secret FROM users WHERE id = ?", (user_id,))
+        secret = cursor.fetchone()[0]
+        conn.close()
+        totp = pyotp.TOTP(secret)
+        if totp.verify(otp_code):
+            # Get the user's details
+            conn = sqlite3.connect('database.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+            user = cursor.fetchone()
+            conn.close()
             session['logged_in'] = True
             session['user_id'] = user[0]
             session['username'] = user[1]
@@ -128,11 +192,9 @@ def login():
             print("Email:", session.get('email'))
             print("First Name:", session.get('f_name'))
             print("Last Name:", session.get('l_name'))
-            return redirect('/')
-        else:
-            flash('Invalid credentials', 'error')
-    
-    return render_template('login.html')
+
+            del session['pending_user']
+            return redirect('/student_dashboard')
 
 @app.route('/register', methods=['GET','POST'])
 # NOTE: for now, this is just signing up all new users as students. 
