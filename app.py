@@ -33,8 +33,9 @@ def init_db():
         f_name TEXT NOT NULL,
         l_name TEXT NOT NULL,
         email TEXT NOT NULL,
-        admin BOOLEAN DEFAULT FALSE
-    )
+        admin BOOLEAN DEFAULT FALSE,
+        mfa_secret TEXT
+    );
     ''')
 
     c.execute('''

@@ -45,7 +45,6 @@
 </div>
 
 <!-- Edit List Modal -->
-<!-- Note that i probably want this to lead to a seperate page with all of the flashcards, but for now this is ok. -->
 <div id="editListModal" class="modal fade" tabindex="-1" aria-labelledby="editListModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
@@ -87,7 +86,7 @@
                         <input type="text" class="form-control" name="list_name" id="list_name" required>
                     </div>
                     <div id="flashcards-container">
-                        <div class="flashcard my-3">
+                        <div class="flashcard-form my-3">
                             <div class="form-group">
                                 <label for="flashcard_question_1">Question:</label>
                                 <input type="text" class="form-control" name="flashcard_question_1" id="flashcard_question_1" placeholder="Question" required>
@@ -100,7 +99,7 @@
                         </div>
                     </div>
                     <input type="hidden" name="flashcard_count" id="flashcard_count" value="1">
-                    <div class="modal-footer"></div>
+                    <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="addFlashcard()">Add Another Flashcard</button>
                         <button type="submit" class="btn btn-primary">Save List</button>
                     </div>
@@ -123,7 +122,7 @@
             <div class="modal-body">
                 <form action="{{ url_for('assign_lists') }}" method="POST">
                     <div class="form-group my-3">
-                        <label for="list_name">Student Username:</label>
+                        <label for="username">Student Username:</label>
                         <input type="text" list="usernames" class="form-control" name="username" id="username" required>
                         <!-- Datalist for Username Autofill -->
                         <datalist id="usernames">
@@ -133,7 +132,7 @@
                         </datalist>
                     </div>
                     <div class="form-group my-3">
-                        <label for="list_name">List Name:</label>
+                        <label for="listname">List Name:</label>
                         <input type="text" list="listnames" class="form-control" name="listname" id="listname" required>
                         <!-- Datalist for List Autofill -->
                         <datalist id="listnames">
@@ -142,7 +141,7 @@
                             {% endfor %}
                         </datalist>
                     </div>
-                    <div class="modal-footer"></div>
+                    <div class="modal-footer">
                         <button type="submit" class="btn btn-primary">Assign List</button>
                     </div>
                 </form>

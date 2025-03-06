@@ -16,8 +16,7 @@
 }
 
 .flashcard {
-    width: 200px;
-    height: 300px;
+    height: 35vh;
     text-align: center;
     transition: transform 0.6s;
     transform-style: preserve-3d;

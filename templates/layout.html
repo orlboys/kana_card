@@ -3,22 +3,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='favicon/site.webmanifest') }}">
     <title>KanaCard</title>
 </head>
 <body>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <ul class='flash-messages'>
-                {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-                {% endfor %}
-            </ul>
+            <div class="fixed-top mt-3 mx-3">
+                <ul class='flash-messages list-unstyled'>
+                    {% for category, message in messages %}
+                    <li class="alert alert-dark alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
         {% endif %}
     {% endwith %}
     
     <div class="wrapper">
         <nav class="custom-nav-styling navbar navbar-expand-lg navbar-dark bg-dark align-items-center sticky-top" style="box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.1);">
-            <a class="navbar-brand" href="#">KanaCard</a>
+            <a class="navbar-brand mx-auto" href="#">
+                <img src="{{ url_for('static', filename='kanacard_logo.png')}}" class="img-fluid d-inline-block align-top" alt="KanaCard Logo" style="max-height: 50px;">
+            </a>
+            <a class="navbar-brand mx-auto pr-5" href="#">KanaCard</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>

@@ -52,7 +52,7 @@ function addFlashcard() {
     const flashcardDiv = document.createElement('div');
     flashcardDiv.className = 'flashcards-container';
     flashcardDiv.innerHTML = `
-        <div class="flashcard my-3">
+        <div class="flashcard-form my-3">
             <div class="form-group">
                 <label for="flashcard_question_${flashcardCount}">Question ${flashcardCount}:</label>
                 <input type="text" class="form-control" name="flashcard_question_${flashcardCount}" id="flashcard_question_${flashcardCount}" placeholder="Question" required>
@@ -156,3 +156,18 @@ function searchUserTable() {
         searchError.style.display = '';
     }
 }
+
+// Alert Dismissal
+
+document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(function () {
+        document.querySelectorAll('.alert').forEach(function (alert) {
+            alert.classList.remove('show');
+            alert.classList.add('fade');
+            setTimeout(function () {
+                alert.remove();
+            }, 1000);
+        } );
+
+    }, 5000);
+});
