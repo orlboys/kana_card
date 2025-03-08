@@ -67,8 +67,9 @@
                 </ul>
                 <ul class="navbar-nav ml-auto">
                     <li class="nav-item">
-                        <form action='/logout' method='post' class="mb-0">
-                            <button type='submit' class="btn btn-outline-danger d-flex align-items-center">Logout</button>
+                        <form method="POST" action="{{ url_for('logout') }}" class="mb-0">
+                            {{ logout_form.hidden_tag() }}
+                            {{ logout_form.submit(class="btn btn-outline-danger d-flex align-items-center") }}
                         </form>
                     </li>
                 </ul>

@@ -4,30 +4,44 @@
 # - add more error handling and validation for the forms.
 # - add more comments to explain the logic of the code.
 
-import sqlite3
-from flask import Flask, render_template, request, redirect, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
-import re
-from markupsafe import escape
-import pyotp
-import qrcode
+# Flask / Functionality Imports
+import sqlite3 # For database operations
+from flask import Flask, render_template, request, redirect, session, flash # Flask imports
+
+# Security Imports
+from werkzeug.security import generate_password_hash, check_password_hash # For hashing passwords
+import re # For regex validation
+from markupsafe import escape # For escaping user input
+from flask_wtf import CSRFProtect # For CSRF protection
+from forms import LoginForm, RegisterForm, FlashcardForm, ListForm, UserEditForm, ListEditForm, AssignListForm, MFAVerificationForm, LogoutForm, DeleteItemForm # For form validation and CSRF protection
+
+# MFA Imports
+import pyotp # For MFA
+import qrcode # For generating QR codes
 
 app = Flask(__name__)
 app.secret_key = 'placeholder_secret_key' #change this for deployment >:(
 
+# CSRF Protection
+csrf = CSRFProtect(app)
+
+# Cookie Security
+app.config.update(
+    SESSION_COOKIE_SECURE=True, # Enforces HTTPS
+    SESSION_COOKIE_HTTPONLY=True, # Prevents client-side JS from accessing session cookies
+    SESSION_COOKIE_SAMESITE="Strict" # Prevents CSRF attacks - cookies can only be sent to the same site that set them
+    )
+
 # Enforcing HTTPS usage
 @app.before_request
 def enforce_https():
-    if not request.is_secure:
+    if not request.is_secure and app.env != "development":
         return redirect(request.url.replace("http://", "https://"))
 
-
-# Input Validation
-def is_valid_item(item):
-    return isinstance(item, str) and 0 < len(item) <= 255 and re.match(r'^[a-zA-Z0-9_ ]+$', item)
-
-def is_valid_email(email):
-    return isinstance(email, str) and 0 < len(email) <= 255 and re.match(r'^[a-zA-Z0-9_]+@[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+$', email)
+# Context Processor to make Logout Form available Globally
+@app.context_processor
+def inject_logout_form():
+    return dict(logout_form=LogoutForm())
 
 # Database Initialisation
 def init_db():
@@ -100,7 +114,6 @@ def get_db_connection():
 def index():
     # This will probably be like a massive 'redirect' function. Something like:
     # If user is a student, redirect to student dashboard. If user is an admin, redirect to admin dashboard. Else, redirect to the login page.
-
     if session.get('logged_in'):
         if session.get('admin'):
             return redirect('/admin_dashboard')
@@ -113,31 +126,28 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':  # i.e. if it's a form submission
-        username = request.form['username']
-        password = request.form['password']
-
-        # Input Validation
-        if not is_valid_item(username) or not is_valid_item(password):
-            flash('Invalid Input', 'error')
-            return redirect('/login')
+    login_form = LoginForm()
+    mfa_form= MFAVerificationForm()
+    if login_form.validate_on_submit(): #If the form is submitted... A POST request. Combines submission and validation methods.
+        username = login_form.username.data
+        password = login_form.password.data
 
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM users WHERE username = ?', (escape(username),))
             user = cursor.fetchone()
 
-        if user and check_password_hash(user[2], password):
+        if user and check_password_hash(user[2], escape(password)):
             # MFA
             session['pending_user'] = user[0]
             session['username'] = user[1]
             if not user[7]:  # if the user's first time logging in, therefore no MFA secret
                 return redirect('/mfa_setup')
-            return render_template('login.html', show_mfa_modal=True)
+            return render_template('login.html', login_form=login_form, mfa_form = mfa_form, show_mfa_modal=True)
         else:
             flash('Invalid credentials', 'error')
 
-    return render_template('login.html', show_mfa_modal=False)
+    return render_template('login.html', login_form=login_form, mfa_form=mfa_form, show_mfa_modal=False)
 
 ## MFA ##
 @app.route('/mfa_setup', methods=['GET', 'POST'])
@@ -172,103 +182,101 @@ def mfa_setup():
 def verify_mfa():
     if 'pending_user' not in session:
         return redirect('/login')
-
-    user_id = session['pending_user']
-    otp_code = request.form['otp']
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT mfa_secret FROM users WHERE id = ?", (user_id,))
-        secret = cursor.fetchone()[0]
-
-    totp = pyotp.TOTP(secret)
-    if totp.verify(otp_code):
+    
+    form = MFAVerificationForm()
+    if form.validate_on_submit():
+        user_id = session['pending_user']
+        otp_code = form.verification_code.data
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
-            user = cursor.fetchone()
+            cursor.execute("SELECT mfa_secret FROM users WHERE id = ?", (user_id,))
+            secret = cursor.fetchone()[0]
 
-        session['logged_in'] = True
-        session['user_id'] = user[0]
-        session['username'] = user[1]
-        session['f_name'] = user[3]
-        session['l_name'] = user[4]
-        session['email'] = user[5]
-        session['admin'] = user[6]  # Assuming admin is the 7th column
-        flash('You were successfully logged in')
-        print("Logged in as:", session.get('username'))
-        print("Admin status:", session.get('admin'))
-        print("User ID:", session.get('user_id'))
-        print("Email:", session.get('email'))
-        print("First Name:", session.get('f_name'))
-        print("Last Name:", session.get('l_name'))
+        totp = pyotp.TOTP(secret)
+        if totp.verify(otp_code):
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+                user = cursor.fetchone()
 
-        del session['pending_user']
-        if session.get('admin'):
-            return redirect('/admin_dashboard')
+            session['logged_in'] = True
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            session['f_name'] = user[3]
+            session['l_name'] = user[4]
+            session['email'] = user[5]
+            session['admin'] = user[6]  # Assuming admin is the 7th column
+            flash('You were successfully logged in')
+            print("Logged in as:", session.get('username'))
+            print("Admin status:", session.get('admin'))
+            print("User ID:", session.get('user_id'))
+            print("Email:", session.get('email'))
+            print("First Name:", session.get('f_name'))
+            print("Last Name:", session.get('l_name'))
+
+            del session['pending_user']
+            return redirect('/')
         else:
-            return redirect('/student_dashboard')
-    else:
-        flash('Invalid OTP', 'error')
-        return redirect('/login')
-    
+            flash('Invalid OTP', 'error')
+            return redirect('/login')
+    return redirect('/login')
 
 @app.route('/register', methods=['GET','POST'])
 # NOTE: for now, this is just signing up all new users as students. 
 def register():
+    register_form = RegisterForm()
     if request.method == 'POST': #i.e. if its a form submission
-        username = request.form['username']
-        password = request.form['password']
-        f_name = request.form['first-name']
-        l_name = request.form['last-name']
-        email = request.form['email']
-
-        # Input Validation
-        if not all(map(is_valid_item, [username, password, f_name, l_name]) or not is_valid_email(email)):
-            flash('Invalid Input', 'error')
-            return redirect('/register')
+        username = register_form.username.data
+        password = register_form.password.data
+        f_name = register_form.first_name.data
+        l_name = register_form.last_name.data
+        email = register_form.email.data
 
         hashed_password = generate_password_hash(password)
+        with get_db_connection() as conn:
+            conn = sqlite3.connect('database.db')
+            cursor = conn.cursor()
 
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', (escape(username),))
+            user_exists = cursor.fetchone()[0] > 0
 
-        cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', (escape(username),))
-        user_exists = cursor.fetchone()[0] > 0
-
-        if user_exists:
-            flash('User already exists.', 'error')
-        else:
-            #Inserting into the Users Table
-            cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (escape(username), escape(hashed_password), escape(f_name), escape(l_name), escape(email), False))
-            conn.commit()
-
-            #Getting the user_id of the user that was just inserted
-            user_id = cursor.lastrowid
-
-            #Inserting into the Students Table
-            cursor.execute('INSERT INTO students (user_id) VALUES (?)', (user_id,))
-            conn.commit()
-
-            #Adding a default list for the user
-            cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction" AND list_id = 10')
-            list_result = cursor.fetchone()
-            if list_result:
-                if cursor.fetchone() == 0:
-                    cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, user_id))
+            if user_exists:
+                flash('User already exists.', 'error')
+            else:
+                #Inserting into the Users Table
+                cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (escape(username), escape(hashed_password), escape(f_name), escape(l_name), escape(email), False))
                 conn.commit()
 
-            flash('Registration successful.')
-            conn.close()
-            return redirect('/login')
-        
-        conn.close()
-    return render_template('register.html')
+                #Getting the user_id of the user that was just inserted
+                user_id = cursor.lastrowid
+
+                #Inserting into the Students Table
+                cursor.execute('INSERT INTO students (user_id) VALUES (?)', (user_id,))
+                conn.commit()
+
+                #Adding a default list for the user
+                cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction" AND list_id = 10')
+                list_result = cursor.fetchone()
+                if list_result:
+                    if cursor.fetchone() == 0:
+                        cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, user_id))
+                    conn.commit()
+
+                flash('Registration successful.')
+                return redirect('/login')
+            
+    return render_template('register.html', register_form=register_form)
 
 @app.route('/logout', methods=['POST']) # POST request to prevent CSRF
 def logout():
-    session.clear()
-    flash('You were logged out')
-    return redirect('/login')
+    form = LogoutForm()
+    if form.validate_on_submit():
+        session.clear()
+        flash('You were logged out')
+        return redirect('/login')
+    else:
+        flash('Invalid request', 'error')
+        return redirect('/')
 
 ## STUDENT ROUTES ##
 @app.route('/student_dashboard')
@@ -379,8 +387,11 @@ def list_management():
         listnames = [row[0] for row in cursor.fetchall()]
         conn.close()
         return listnames
+    
+    list_form = ListEditForm()
+    delete_form = DeleteItemForm()
 
-    return render_template('list_management.html', lists = get_all_lists(), usernames = get_all_usernames(), listnames = get_all_listnames())
+    return render_template('list_management.html', lists = get_all_lists(), usernames = get_all_usernames(), listnames = get_all_listnames(), list_form=list_form, delete_form=delete_form)
 
 ## USER MANAGEMENT ##
 
@@ -388,7 +399,7 @@ def list_management():
 def user_management():
     if not session.get('logged_in') or not session.get('admin'):
         return redirect('/login')
-
+    
     def get_all_users():
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -398,95 +409,100 @@ def user_management():
         print("Fetched Users:", users)  # Debug print
         conn.close()
         return users
+    
+    user_form = UserEditForm()
+    delete_form = DeleteItemForm(request.form)
+    return render_template('user_management.html', users=get_all_users(), user_form=user_form, delete_form=delete_form)
 
-    return render_template('user_management.html', users=get_all_users())
 
 @app.route('/edit_item', methods=["POST"])
 def edit_item():
-    type = request.form.get("edit_type")
-    id = request.form.get("edit_index")
-    print("Edit Type:", type)
+    user_form = UserEditForm()
+    list_form = ListEditForm()
 
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    if type == "list":
-        new_listname = request.form.get("new_listname")
+    # Debug statements
+    print("User Form Data:", user_form.data)
+    print("List Form Data:", list_form.data)
+    print("User Form Validation:", user_form.validate_on_submit())
+    print("List Form Validation:", list_form.validate_on_submit())
 
-        # Input Validation
-        if not is_valid_item(new_listname):
-            flash('Invalid Input', 'error')
+    # User Edit Form
+    if user_form.validate_on_submit() and user_form.edit_index.data:
+        id = user_form.edit_index.data
+        new_username = user_form.new_username.data
+        new_first_name = user_form.new_first_name.data
+        new_last_name = user_form.new_last_name.data
+        new_email = user_form.new_email.data
+        new_role = user_form.new_role.data
+
+        with get_db_connection as conn:
+            cursor = conn.cursor()
+            admin_value = 1 if new_role == 'admin' else 0
+            try:
+                cursor.execute(
+                    "UPDATE users SET username = ?, f_name = ?, l_name = ?, email = ?, admin = ? WHERE id = ?",
+                    (escape(new_username), escape(new_first_name), escape(new_last_name), escape(new_email), admin_value, id)
+                )
+                conn.commit()
+            except sqlite3.Error as e:
+                flash(f'Database error: {e}', 'error')
+                conn.rollback()
+            return redirect('/admin_dashboard/users')
+        
+    # List Edit Form #
+    elif list_form.validate_on_submit() and list_form.edit_index.data:
+        id = list_form.edit_index.data
+        new_listname = list_form.new_listname.data
+
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    "UPDATE flashcard_lists SET list_name = ? WHERE list_id = ?",
+                    (escape(new_listname), id)
+                )
+                conn.commit()
+            except sqlite3.Error as e:
+                flash(f'Database error: {e}', 'error')
+                conn.rollback()
             return redirect('/admin_dashboard/lists')
 
-        print("New List Name:", new_listname)
-        cursor.execute(
-            "UPDATE flashcard_lists SET list_name = ? WHERE list_id = ?",
-            (escape(new_listname), id)
-        )
-    elif type == "user":
-        new_username = request.form.get("new_username")
-        new_first_name = request.form.get("new_first_name")
-        new_last_name = request.form.get("new_last_name")
-        new_email = request.form.get("new_email")
-        new_role = request.form.get("new_role")
-
-        # Input Validation
-        if not all(map(is_valid_item, [new_username, new_first_name, new_last_name, new_email])):
-            flash('Invalid Input', 'error')
-            return redirect('/admin_dashboard/users')
-
-        print("User ID:", id)
-        print("New Username:", new_username)
-        print("New First Name:", new_first_name)
-        print("New Last Name:", new_last_name)
-        print("New Email:", new_email)
-        print("New Role:", new_role)
-        admin_value = 1 if new_role == 'admin' else 0
-        try:
-            cursor.execute(
-                "UPDATE users SET username = ?, f_name = ?, l_name = ?, email = ?, admin = ? WHERE id = ?",
-                (escape(new_username), escape(new_first_name), escape(new_last_name), escape(new_email), admin_value, id)
-            )
-        except sqlite3.Error as e:
-            flash(f'Database error: {e}', 'error')
-            conn.rollback()
-            
-    conn.commit()
-    conn.close()
-    if type == "list":
-        return redirect('/admin_dashboard/lists')
-    elif type == "user":
-        return redirect('/admin_dashboard/users')
-    else:
-        return redirect('/admin_dashboard')
+    flash('Invalid request', 'error')
+    return redirect('/admin_dashboard')
 
 @app.route('/delete_item', methods=["POST"])
 def delete_item():
-    id = request.form.get("delete_index")
-    type = request.form.get("delete_type")
-    conn = sqlite3.connect('database.db')
-    conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
-    cursor = conn.cursor()
-    if type == "list":
-        cursor.execute(
-            "DELETE FROM flashcard_lists WHERE list_id = ?",
-            (id,)
-        )
-        cursor.execute(
-            "DELETE FROM flashcards WHERE list_id = ?", 
-            (id,))
-    elif type == "user":
-        cursor.execute(
-            "DELETE FROM users WHERE id = ?",
-            (id,)
-        )
-    conn.commit()
-    conn.close()
-    if type == "list":
-        return redirect('/admin_dashboard/lists')
-    elif type == "user":
-        return redirect('/admin_dashboard/users')
-    else:
-        return redirect('/admin_dashboard')
+    delete_form = DeleteItemForm(request.form)
+    print("Raw Form Data: ", request.form)
+    print('Delete Index: ', delete_form.delete_index.data)
+    print('Delete Type: ', delete_form.delete_type.data)
+    if delete_form.validate_on_submit():
+        id = delete_form.delete_index.data
+        type = delete_form.delete_type.data
+        print(f"Delete Type: {type}")
+        print(f"Delete ID: {id}")
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            if type == "list":
+                cursor.execute(
+                    "DELETE FROM flashcard_lists WHERE list_id = ?",
+                    (id,)
+                )
+                cursor.execute(
+                    "DELETE FROM flashcards WHERE list_id = ?", 
+                    (id,))
+            elif type == "user":
+                cursor.execute(
+                    "DELETE FROM users WHERE id = ?",
+                    (id,)
+                )
+            conn.commit()
+        if type == "list":
+            return redirect('/admin_dashboard/lists')
+        elif type == "user":
+            return redirect('/admin_dashboard/users')
+    flash('Invalid request', 'error')
+    return redirect('/admin_dashboard')
 
 @app.route('/admin_dashboard/lists/add_list', methods=['GET', 'POST'])
 def add_list():
@@ -496,11 +512,6 @@ def add_list():
     if request.method == 'POST':
         list_name = request.form.get('list_name')
         flashcard_count = request.form.get('flashcard_count')  # Get the flashcard count from the form
-
-        # Input Validation
-        if not is_valid_item(list_name):
-            flash('Invalid Input', 'error')
-            return redirect('/admin_dashboard/lists')
         
         if flashcard_count is None:
             flashcard_count = 0
@@ -514,10 +525,6 @@ def add_list():
             answer = request.form.get(f'flashcard_answer_{i}')
             if question and answer:
                 flashcards.append((question, answer))
-
-        #Input Validation
-        if not all(map(is_valid_item, ([question, answer] for question, answer in flashcards))):
-            flash('Invalid Input', 'error')
 
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -545,10 +552,6 @@ def assign_lists():
 
     username = request.form.get('username')
     listname = request.form.get('listname')
-    # Input Validation
-    if not is_valid_item(username) or not is_valid_item(listname):
-        flash('Invalid Input', 'error')
-        return redirect('/admin_dashboard/lists')
     
     try:
         conn = sqlite3.connect('database.db')

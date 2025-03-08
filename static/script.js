@@ -53,6 +53,26 @@ function closeMfaModal() { // Closes the MFA modal
     mfaModal.hide();
 }
 
+// Delete User Modal (Confirmation)
+function openUserDeleteModal(id) {
+    console.log('Setting delete index to:', id);
+    document.getElementById('delete-index').value = id;
+    var modalEl = document.getElementById('deleteUserModal');
+    var deleteUserModal = new bootstrap.Modal(modalEl);
+    $('#deleteUserModal').modal('show')
+}
+
+// Delete List Modal (Confirmation)
+function openListDeleteModal(id) {
+    console.log('Setting delete index to:', id);
+    document.getElementById('delete-index').value = id;
+    var modalEl = document.getElementById('deleteListModal');
+    var deleteListModal = new bootstrap.Modal(modalEl);
+    $('#deleteListModal').modal('show')
+}
+
+
+
 // FLASHCARD ADDING FUNCTIONALITY //
 let flashcardCount = 1;
 
