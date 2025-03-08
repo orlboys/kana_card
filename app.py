@@ -1,6 +1,6 @@
 # Description: This file contains the main Flask application for the Flashcard Web Application.
 # IMPROVEMENTS TO MAKE:
-# - reduce repetition, especially in the database connection and closing functions.
+
 # - add more error handling and validation for the forms.
 # - add more comments to explain the logic of the code.
 
@@ -15,10 +15,19 @@ import qrcode
 app = Flask(__name__)
 app.secret_key = 'placeholder_secret_key' #change this for deployment >:(
 
-# Input Validation
+# Enforcing HTTPS usage
+@app.before_request
+def enforce_https():
+    if not request.is_secure:
+        return redirect(request.url.replace("http://", "https://"))
 
+
+# Input Validation
 def is_valid_item(item):
     return isinstance(item, str) and 0 < len(item) <= 255 and re.match(r'^[a-zA-Z0-9_ ]+$', item)
+
+def is_valid_email(email):
+    return isinstance(email, str) and 0 < len(email) <= 255 and re.match(r'^[a-zA-Z0-9_]+@[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+$', email)
 
 # Database Initialisation
 def init_db():
@@ -82,6 +91,11 @@ def init_db():
 
 init_db()
 
+def get_db_connection():
+    conn = sqlite3.connect('database.db')
+    conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
+    return conn
+
 @app.route('/')
 def index():
     # This will probably be like a massive 'redirect' function. Something like:
@@ -99,35 +113,34 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST': #i.e. if its a form submission
+    if request.method == 'POST':  # i.e. if it's a form submission
         username = request.form['username']
         password = request.form['password']
 
         # Input Validation
-
         if not is_valid_item(username) or not is_valid_item(password):
             flash('Invalid Input', 'error')
             return redirect('/login')
 
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM users WHERE username = ?', (escape(username),))
+            user = cursor.fetchone()
 
-        cursor.execute('SELECT * FROM users WHERE username = ?', (escape(username),))
-        user = cursor.fetchone()
-        conn.close()
         if user and check_password_hash(user[2], password):
-            #MFA
+            # MFA
             session['pending_user'] = user[0]
-            if not user["mfa_secret"]: #if the user's first time logging in, therefore no MFA secret
+            session['username'] = user[1]
+            if not user[7]:  # if the user's first time logging in, therefore no MFA secret
                 return redirect('/mfa_setup')
-            return redirect('/verify_mfa')
+            return render_template('login.html', show_mfa_modal=True)
         else:
             flash('Invalid credentials', 'error')
-    
-    return render_template('login.html')
+
+    return render_template('login.html', show_mfa_modal=False)
 
 ## MFA ##
-@app.route('/mfa_setup', methods=['POST'])
+@app.route('/mfa_setup', methods=['GET', 'POST'])
 def mfa_setup():
     if 'pending_user' not in session:
         return redirect('/login')
@@ -135,17 +148,16 @@ def mfa_setup():
     user_id = session['pending_user']
 
     # Retrieves the current MFA secret key for the user
-    conn = sqlite3.connect('database.db') # IF THERES AN ERROR HERE its because I haven't completely followed the code from the tutorial - check the get_db_connection() function from the tutorial and implement
-    cursor = conn.cursor()
-    cursor.execute("SELECT mfa_secret FROM users WHERE id = ?", (user_id,))
-    secret = cursor.fetchone()[0]
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT mfa_secret FROM users WHERE id = ?", (user_id,))
+        secret = cursor.fetchone()[0]
 
-    # If they don't have one, generate an MFA secret key
-    if not secret:
-        secret = pyotp.random_base32()
-        cursor.execute("UPDATE users SET mfa_secret = ? WHERE id = ?", (secret, user_id))
-        conn.commit()
-    conn.close()
+        # If they don't have one, generate an MFA secret key
+        if not secret:
+            secret = pyotp.random_base32()
+            cursor.execute("UPDATE users SET mfa_secret = ? WHERE id = ?", (secret, user_id))
+            conn.commit()
 
     # Generate a QR code for the user to scan
     totp = pyotp.TOTP(secret)
@@ -154,47 +166,51 @@ def mfa_setup():
     qr = qrcode.make(uri)
     qr_path = "static/qrcode.png"
     qr.save(qr_path)
-    return render_template('mfa_setup.html', qr_path=qr_path) # AT SOME POINT - Implement this to be a modal on the login page.
+    return render_template('mfa_setup.html', qr_path=qr_path)
 
-@app.route('/verify_mfa', methods=['GET', 'POST'])
+@app.route('/verify_mfa', methods=['POST'])
 def verify_mfa():
     if 'pending_user' not in session:
         return redirect('/login')
-    
+
     user_id = session['pending_user']
-    if request.method == 'POST':
-        # Retrieves the code from the form
-        otp_code = request.form['otp']
-        conn = sqlite3.connect('database.db') # IF THERES AN ERROR HERE its because I haven't completely followed the code from the tutorial - check the get_db_connection() function from the tutorial and implement
+    otp_code = request.form['otp']
+    with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT mfa_secret FROM users WHERE id = ?", (user_id,))
         secret = cursor.fetchone()[0]
-        conn.close()
-        totp = pyotp.TOTP(secret)
-        if totp.verify(otp_code):
-            # Get the user's details
-            conn = sqlite3.connect('database.db')
+
+    totp = pyotp.TOTP(secret)
+    if totp.verify(otp_code):
+        with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
             user = cursor.fetchone()
-            conn.close()
-            session['logged_in'] = True
-            session['user_id'] = user[0]
-            session['username'] = user[1]
-            session['f_name'] = user[3]
-            session['l_name'] = user[4]
-            session['email'] = user[5]
-            session['admin'] = user[6]  # Assuming admin is the 7th column
-            flash('You were successfully logged in')
-            print("Logged in as:", session.get('username'))
-            print("Admin status:", session.get('admin'))
-            print("User ID:", session.get('user_id'))
-            print("Email:", session.get('email'))
-            print("First Name:", session.get('f_name'))
-            print("Last Name:", session.get('l_name'))
 
-            del session['pending_user']
+        session['logged_in'] = True
+        session['user_id'] = user[0]
+        session['username'] = user[1]
+        session['f_name'] = user[3]
+        session['l_name'] = user[4]
+        session['email'] = user[5]
+        session['admin'] = user[6]  # Assuming admin is the 7th column
+        flash('You were successfully logged in')
+        print("Logged in as:", session.get('username'))
+        print("Admin status:", session.get('admin'))
+        print("User ID:", session.get('user_id'))
+        print("Email:", session.get('email'))
+        print("First Name:", session.get('f_name'))
+        print("Last Name:", session.get('l_name'))
+
+        del session['pending_user']
+        if session.get('admin'):
+            return redirect('/admin_dashboard')
+        else:
             return redirect('/student_dashboard')
+    else:
+        flash('Invalid OTP', 'error')
+        return redirect('/login')
+    
 
 @app.route('/register', methods=['GET','POST'])
 # NOTE: for now, this is just signing up all new users as students. 
@@ -207,7 +223,7 @@ def register():
         email = request.form['email']
 
         # Input Validation
-        if not all(map(is_valid_item, [username, password, f_name, l_name, email])):
+        if not all(map(is_valid_item, [username, password, f_name, l_name]) or not is_valid_email(email)):
             flash('Invalid Input', 'error')
             return redirect('/register')
 
@@ -576,3 +592,7 @@ def assign_lists():
         conn.close()
 
     return redirect('/admin_dashboard/lists')
+
+# Making Flask run on SSL
+if __name__ == '__main__':
+    app.run(debug=True, ssl_context=('cert.pem', 'key.pem'), host="0.0.0.0", port=443)

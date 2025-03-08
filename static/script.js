@@ -42,6 +42,17 @@ function closeListEditModal() { // Closes the edit modal
     editListModal.hide();
 }
 
+// Modal Functionality for MFA Verification
+function openMfaModal() { // Opens the MFA modal
+    var mfaModal = new bootstrap.Modal(document.getElementById('verifyMfaModal'));
+    mfaModal.show();
+}
+
+function closeMfaModal() { // Closes the MFA modal
+    var mfaModal = bootstrap.Modal.getInstance(document.getElementById('verifyMfaModal'));
+    mfaModal.hide();
+}
+
 // FLASHCARD ADDING FUNCTIONALITY //
 let flashcardCount = 1;
 

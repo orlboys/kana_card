@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<section class="min-vh-100 bg-dark">
+    <div class="container pt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <img src="{{ qr_path }}" alt="QR Code" class="card-img-top"/>
+                        <h2 class="card-title text-center">2 Factor Authentication</h2>
+                        <p class="text-center card-text">Scan with Microsoft Authenticator and enter the 6 digit code at login.</p>
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-block">Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
