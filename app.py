@@ -14,6 +14,7 @@ from flask_wtf import CSRFProtect # For CSRF protection
 from forms import LoginForm, RegisterForm, ListForm, UserEditForm, ListEditForm, AssignListForm, MFAVerificationForm, LogoutForm, DeleteItemForm # For input validation and CSRF protection
 from flask_limiter import Limiter # For rate limiting
 from flask_limiter.util import get_remote_address # For rate limiting
+from markupsafe import escape # For escaping user input
 from datetime import timedelta # For session timeout
 import logging # For logging
 
@@ -149,9 +150,9 @@ def index():
 @limiter.limit("5 per minute")
 def login():
     login_form = LoginForm()
-    mfa_form= MFAVerificationForm()
-    if login_form.validate_on_submit(): #If the form is submitted... A POST request. Combines submission and validation methods.
-        username = login_form.username.data
+    mfa_form = MFAVerificationForm()
+    if login_form.validate_on_submit():  # If the form is submitted... A POST request. Combines submission and validation methods.
+        username = escape(login_form.username.data)
         password = login_form.password.data
 
         with get_db_connection() as conn:
@@ -159,14 +160,14 @@ def login():
             cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
             user = cursor.fetchone()
 
-        if user and check_password_hash(user[2], escape(password)):
+        if user and check_password_hash(user[2], password):
             # MFA
             session['pending_user'] = user[0]
             session['username'] = user[1]
             logging.info(f"User {username} logged in")
             if not user[7]:  # if the user's first time logging in, therefore no MFA secret
                 return redirect('/mfa_setup')
-            return render_template('login.html', login_form=login_form, mfa_form = mfa_form, show_mfa_modal=True)
+            return render_template('login.html', login_form=login_form, mfa_form=mfa_form, show_mfa_modal=True)
         else:
             flash('Invalid credentials', 'error')
             logging.warning(f'Failed login attempt for user {username}')
@@ -256,11 +257,11 @@ def verify_mfa():
 def register():
     register_form = RegisterForm()
     if register_form.validate_on_submit(): # i.e. if it's a form submission
-        username = register_form.username.data
+        username = escape(register_form.username.data)
         password = register_form.password.data
-        f_name = register_form.first_name.data
-        l_name = register_form.last_name.data
-        email = register_form.email.data
+        f_name = escape(register_form.first_name.data)
+        l_name = escape(register_form.last_name.data)
+        email = escape(register_form.email.data)
 
         hashed_password = generate_password_hash(password)
         with get_db_connection() as conn:
@@ -327,7 +328,7 @@ def student_dashboard():
         return redirect('/login')
     
     def get_student_lists(user_id):
-        with get_db_connection as conn:
+        with get_db_connection() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,))
@@ -511,7 +512,7 @@ def edit_item():
         new_email = user_form.new_email.data
         new_role = user_form.new_role.data
 
-        with get_db_connection as conn:
+        with get_db_connection() as conn:
             cursor = conn.cursor()
             admin_value = 1 if new_role == 'admin' else 0
             try:
@@ -627,8 +628,8 @@ def assign_lists():
     
     assign_form = AssignListForm()
 
-    username = assign_form.username.data
-    listname = assign_form.listname.data
+    username = escape(assign_form.username.data)
+    listname = escape(assign_form.listname.data)
     
     try:
         if assign_form.validate_on_submit():
