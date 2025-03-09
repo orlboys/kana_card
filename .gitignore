@@ -3,4 +3,8 @@
 cert.pem
 key.pem
 
+# Ignore deprecated templates
 depreciated_templates/
+
+# Ignore the log files
+app.log

@@ -13,7 +13,7 @@
                     </div>
                 </div>
                 <div class="register-form d-flex align-items-center px-5 ms-xl-4 mt-5 pt-5 pt-xl-3 mx-3 bg-dark border rounded-3 hover-shadow-2-strong">
-                    <form action="/register" method="post" style="width: 23rem;">
+                    <form action="{{ url_for('register') }}" method="post" style="width: 23rem;">
                         {{ register_form.hidden_tag() }}
                         <h3 class="fw-normal mb-3 pb-3 mt-2" style="letter-spacing: 1px;">Register</h3>
                         
@@ -46,6 +46,18 @@
                         <p>Already have an account? <a href="/login" class="link-info">Login here</a></p>
                     </form>
                 </div>
+                <!-- Display form errors -->
+                {% if register_form.errors %}
+                    <div class="alert alert-danger mt-3">
+                        <ul class="mb-0">
+                            {% for field, errors in register_form.errors.items() %}
+                                {% for error in errors %}
+                                    <li>{{ field.capitalize() }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
             </div>
             <div class="col-sm-6 px-0 d-none d-sm-block">
                 <img src="{{ url_for('static', filename='register-side-img.jpg') }}" alt="Register image" class="w-100 vh-100" style="object-fit: cover; object-position: left;" loading="lazy">

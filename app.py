@@ -15,6 +15,7 @@ from forms import LoginForm, RegisterForm, ListForm, UserEditForm, ListEditForm,
 from flask_limiter import Limiter # For rate limiting
 from flask_limiter.util import get_remote_address # For rate limiting
 from datetime import timedelta # For session timeout
+import logging # For logging
 
 # MFA Imports
 import pyotp # For MFA
@@ -27,11 +28,17 @@ app.secret_key = 'placeholder_secret_key' #change this for deployment >:(
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=15)
 
 # Rate Limiting
-limiter = Limiter(get_remote_address, app=app, default_limits=["5 per minute"])
+limiter = Limiter(get_remote_address, app=app, default_limits=["10 per minute"])
 
 # CSRF Protection
 csrf = CSRFProtect(app)
 
+# Logging
+logging.basicConfig(
+    filename='app.log', # Log file
+    level=logging.DEBUG, # Log level
+    format='%(asctime)s - %(levelname)s - %(message)s' # Log format
+)
 # Cookie Security
 app.config.update(
     SESSION_COOKIE_SECURE=True, # Enforces HTTPS
@@ -156,11 +163,13 @@ def login():
             # MFA
             session['pending_user'] = user[0]
             session['username'] = user[1]
+            logging.info(f"User {username} logged in")
             if not user[7]:  # if the user's first time logging in, therefore no MFA secret
                 return redirect('/mfa_setup')
             return render_template('login.html', login_form=login_form, mfa_form = mfa_form, show_mfa_modal=True)
         else:
             flash('Invalid credentials', 'error')
+            logging.warning(f'Failed login attempt for user {username}')
 
     return render_template('login.html', login_form=login_form, mfa_form=mfa_form, show_mfa_modal=False)
 
@@ -169,6 +178,7 @@ def login():
 @limiter.limit("5 per minute")
 def mfa_setup():
     if 'pending_user' not in session:
+        logging.warning("User attempted to access MFA setup without logging in")
         return redirect('/login')
     
     user_id = session['pending_user']
@@ -190,7 +200,7 @@ def mfa_setup():
     uri = totp.provisioning_uri(name=session['username'], issuer_name='Flashcard App')
 
     qr = qrcode.make(uri)
-    qr_path = "static/qrcode.png"
+    qr_path = 'static/qrcode.png'
     qr.save(qr_path)
     return render_template('mfa_setup.html', qr_path=qr_path)
 
@@ -232,18 +242,20 @@ def verify_mfa():
             print("Last Name:", session.get('l_name'))
 
             del session['pending_user']
+            logging.info(f"User {session['username']} successfully logged in")
             return redirect('/')
         else:
             flash('Invalid OTP', 'error')
+            logging.warning(f'Failed MFA verification for userid {session["pending_user"]}')
             return redirect('/login')
     return redirect('/login')
 
+
 @app.route('/register', methods=['GET','POST'])
-@limiter.limit("3 per minute")
-# NOTE: for now, this is just signing up all new users as students. 
+@limiter.limit("5 per minute")
 def register():
     register_form = RegisterForm()
-    if request.method == 'POST': #i.e. if its a form submission
+    if register_form.validate_on_submit(): # i.e. if it's a form submission
         username = register_form.username.data
         password = register_form.password.data
         f_name = register_form.first_name.data
@@ -259,49 +271,59 @@ def register():
 
             if user_exists:
                 flash('User already exists.', 'error')
+                logging.warning(f'User attempted to register as {username}, who already exists')
             else:
                 try:
-                    #Inserting into the Users Table
+                    # Inserting into the Users Table
                     cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (username, hashed_password, f_name, l_name, email, False))
                     conn.commit()
 
-                    #Getting the user_id of the user that was just inserted
+                    # Getting the user_id of the user that was just inserted
                     user_id = cursor.lastrowid
 
-                    #Inserting into the Students Table
+                    # Inserting into the Students Table
                     cursor.execute('INSERT INTO students (user_id) VALUES (?)', (user_id,))
                     conn.commit()
 
-                    #Adding a default list for the user
+                    # Adding a default list for the user
                     cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction" AND list_id = 10')
                     list_result = cursor.fetchone()
                     if list_result:
                         if cursor.fetchone() == 0:
                             cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, user_id))
                         conn.commit()
-
                     flash('Registration successful.')
+                    logging.info(f"User {username} registered successfully")
                 except sqlite3.Error as e:
                     flash(f'Database error: {e}', 'error')
                     conn.rollback()
+                    logging.error(f'Database error: {e} on user registration')
                 return redirect('/login')
+    else:
+        logging.warning("User made an invalid request to register")
+        logging.debug(f"Form data: {register_form.data}")
+        logging.debug(f"Form errors: {register_form.errors}")
+    
     return render_template('register.html', register_form=register_form)
 
 @app.route('/logout', methods=['POST']) # POST request to prevent CSRF
 def logout():
     form = LogoutForm()
-    if form.validate_on_submit():
+    if form.submit.data:
+        logging.info(f"User {session['username']} logged out")
         session.clear()
         flash('You were logged out')
         return redirect('/login')
     else:
         flash('Invalid request', 'error')
+        logging.warning(f"Invalid request to logout made by {session['username']}")
         return redirect('/')
 
 ## STUDENT ROUTES ##
 @app.route('/student_dashboard')
 def student_dashboard():
     if not session.get('logged_in') or session.get('admin'):
+        logging.warning(f'User attempted to access student dashboard without logging in as a student')
         return redirect('/login')
     
     def get_student_lists(user_id):
@@ -326,15 +348,17 @@ def student_dashboard():
                 lists = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
             except sqlite3.Error as e:
                 flash(f'Database error: {e}', 'error')
+                logging.error(f'Database error: {e} on fetching student lists')
                 lists = []
         print(lists)
         return lists
-    
+    logging.info(f"User {session['username']} accessed the student dashboard")
     return render_template('student_dashboard.html', lists = get_student_lists(session.get('user_id')))
 
 @app.route('/student_list/<int:list_id>/<int:card_index>', methods=['GET', 'POST'])
 def list_card(list_id, card_index=0):
     if not session.get('logged_in') or session.get('admin'):
+        logging.warning(f'User attempted to access flashcard view without logging in as a student')
         return redirect('/login')
     
     def get_list_name(list_id):
@@ -345,6 +369,7 @@ def list_card(list_id, card_index=0):
                 list_name = cursor.fetchone()[0]
             except sqlite3.Error as e:
                 flash(f'Database error, unable to fetch list name: {e}', 'error')
+                logging.error(f'Database error: {e} on fetching list name')
                 list_name = None
         return list_name
 
@@ -356,6 +381,7 @@ def list_card(list_id, card_index=0):
                 flashcards = cursor.fetchall()
             except sqlite3.Error as e:
                 flash(f'Database error, unable to fetch flashcards: {e}', 'error')
+                logging.error(f'Database error: {e} on fetching flashcards')
                 flashcards = []
         return flashcards
 
@@ -363,9 +389,10 @@ def list_card(list_id, card_index=0):
     total_cards = len(flashcards)
 
     if total_cards == 0 or card_index < 0 or card_index >= total_cards:
+        logging.error(f"User {session['username']} attempted to access a non-existent flashcard. List ID: {list_id}, Card Index: {card_index}")
         return "No flashcards found", 404
     
-    print(f"Showing card {card_index}: {flashcards[card_index]}")
+    logging.info(f"User {session['username']} accessed flashcard {card_index} in list {list_id}")
 
     return render_template(
         'list.html',
@@ -380,7 +407,9 @@ def list_card(list_id, card_index=0):
 @app.route('/admin_dashboard')
 def admin_dashboard():
     if not session.get('logged_in') or not session.get('admin'):
+        logging.warning(f'User attempted to access admin dashboard without logging in as an admin')
         return redirect('/login')
+    logging.info(f"User {session['username']} accessed the admin dashboard")
     return render_template('admin_dashboard.html')
 
 ## LIST MANAGEMENT ##
@@ -388,6 +417,7 @@ def admin_dashboard():
 @app.route('/admin_dashboard/lists', methods=['GET', 'POST'])
 def list_management():
     if not session.get('logged_in') or not session.get('admin'):
+        logging.warning(f'User attempted to access list management without logging in as an admin')
         return redirect('/login')
 
     def get_all_lists():
@@ -398,6 +428,7 @@ def list_management():
                 lists = cursor.fetchall()
             except sqlite3.Error as e:
                 flash(f'Database error - Unable to fetch Lists: {e}', 'error')
+                logging.error(f'Database error: {e} on fetching lists')
                 lists = []
         return lists
     
@@ -409,6 +440,7 @@ def list_management():
                 usernames = [row[0] for row in cursor.fetchall()]
             except sqlite3.Error as e:
                 flash(f'Database error - Unable to fetch Usernames: {e}', 'error')
+                logging.error(f'Database error: {e} on fetching usernames')
                 usernames = []
         return usernames
 
@@ -420,6 +452,7 @@ def list_management():
                 listnames = [row[0] for row in cursor.fetchall()]
             except sqlite3.Error as e:
                 flash(f'Database error - Unable to fetch Listnames: {e}', 'error')
+                logging.error(f'Database error: {e} on fetching listnames')
                 listnames = []
         return listnames
     
@@ -427,7 +460,7 @@ def list_management():
     delete_form = DeleteItemForm()
     add_list_form = ListForm()
     assign_form = AssignListForm()
-
+    logging.info(f"User {session['username']} accessed the list management page")
     return render_template('list_management.html', lists = get_all_lists(), usernames = get_all_usernames(), listnames = get_all_listnames(), list_form=list_form, delete_form=delete_form, add_list_form=add_list_form, assign_form=assign_form)
 
 ## USER MANAGEMENT ##
@@ -435,23 +468,25 @@ def list_management():
 @app.route('/admin_dashboard/users', methods=['GET', 'POST'])
 def user_management():
     if not session.get('logged_in') or not session.get('admin'):
+        logging.warning(f'User attempted to access user management without logging in as an admin')
         return redirect('/login')
     
     def get_all_users():
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
-
                 cursor.execute('SELECT id, username, f_name, l_name, email, admin FROM users')
                 users = cursor.fetchall()
                 print("Fetched Users:", users)  # Debug print
             except sqlite3.Error as e:
                 flash(f'Database error - Unable to fetch Users: {e}', 'error')
+                logging.error(f'Database error: {e} on fetching users')
                 users = []
         return users
     
     user_form = UserEditForm()
     delete_form = DeleteItemForm(request.form)
+    logging.info(f"User {session['username']} accessed the user management page")
     return render_template('user_management.html', users=get_all_users(), user_form=user_form, delete_form=delete_form)
 
 
@@ -462,10 +497,10 @@ def edit_item():
     list_form = ListEditForm()
 
     # Debug statements
-    print("User Form Data:", user_form.data)
-    print("List Form Data:", list_form.data)
-    print("User Form Validation:", user_form.validate_on_submit())
-    print("List Form Validation:", list_form.validate_on_submit())
+    logging.debug("User Form Data:", user_form.data)
+    logging.debug("List Form Data:", list_form.data)
+    logging.debug("User Form Validation:", user_form.validate_on_submit())
+    logging.debug("List Form Validation:", list_form.validate_on_submit())
 
     # User Edit Form
     if user_form.validate_on_submit() and user_form.edit_index.data:
@@ -485,8 +520,10 @@ def edit_item():
                     (new_username, new_first_name, new_last_name, new_email, admin_value, id)
                 )
                 conn.commit()
+                logging.info(f"User {session['username']} updated user {id} with new values: {new_username}, {new_first_name}, {new_last_name}, {new_email}, {new_role}")
             except sqlite3.Error as e:
                 flash(f'Database error: {e}', 'error')
+                logging.error(f'Database error: {e} on updating user')
                 conn.rollback()
             return redirect('/admin_dashboard/users')
         
@@ -503,21 +540,23 @@ def edit_item():
                     (new_listname, id)
                 )
                 conn.commit()
+                logging.info(f"User {session['username']} updated list {id} with new name: {new_listname}")
             except sqlite3.Error as e:
                 flash(f'Database error: {e}', 'error')
+                logging.error(f'Database error: {e} on updating list')
                 conn.rollback()
             return redirect('/admin_dashboard/lists')
 
     flash('Invalid request', 'error')
+    logging.warning(f"User {session['username']} made an invalid request to edit an item")
     return redirect('/admin_dashboard')
 
 @app.route('/delete_item', methods=["POST"])
 @limiter.limit("4 per minute")
 def delete_item():
     delete_form = DeleteItemForm(request.form)
-    print("Raw Form Data: ", request.form)
-    print('Delete Index: ', delete_form.delete_index.data)
-    print('Delete Type: ', delete_form.delete_type.data)
+    logging.debug('Delete Index: ', delete_form.delete_index.data)
+    logging.debug('Delete Type: ', delete_form.delete_type.data)
     if delete_form.validate_on_submit():
         id = delete_form.delete_index.data
         type = delete_form.delete_type.data
@@ -530,23 +569,26 @@ def delete_item():
                     cursor.execute(
                         "DELETE FROM flashcard_lists WHERE list_id = ?",
                         (id,)
-                    )
-                    cursor.execute(
-                        "DELETE FROM flashcards WHERE list_id = ?", 
-                        (id,))
+                    ) # This will cascade delete the flashcards as well
+                    conn.commit()
+                    logging.info(f"User {session['username']} deleted list {id}")
                 elif type == "user":
                     cursor.execute(
                         "DELETE FROM users WHERE id = ?",
                         (id,)
-                    )
+                    ) # This will cascade delete the student record as well
+                    logging.info(f"User {session['username']} deleted user {id}")
                 conn.commit()
             except sqlite3.Error as e:
                 flash(f'Database error: {e}', 'error')
+                logging.error(f'Database error: {e} on deleting item')
                 conn.rollback()
         if type == "list":
             return redirect('/admin_dashboard/lists')
         elif type == "user":
             return redirect('/admin_dashboard/users')
+        
+    logging.warning(f"User {session['username']} made an invalid request to delete an item")
     flash('Invalid request', 'error')
     return redirect('/admin_dashboard')
 
@@ -554,6 +596,7 @@ def delete_item():
 @limiter.limit("3 per minute")
 def add_list():
     if not session.get('logged_in') or not session.get('admin'):
+        logging.warning(f'User attempted to access list addition without logging in as an admin')
         return redirect('/login')
     
     add_list_form=ListForm()
@@ -569,14 +612,17 @@ def add_list():
                     cursor.execute('INSERT INTO flashcards (list_id, question, answer) VALUES (?, ?, ?)', (list_id, flashcard['question'], flashcard['answer'] ))
                 conn.commit()
                 flash('List Added', 'success')
+                logging.info(f"User {session['username']} added list {list_name}")
             except sqlite3.Error as e:
                 flash(f'Database error: {e}', 'error')
+                logging.error(f'Database error: {e} on adding list')
                 conn.rollback()
     return redirect('/admin_dashboard/lists')
 
 @app.route('/assign_lists', methods=['POST'])
 def assign_lists():
     if not session.get('logged_in') or not session.get('admin'):
+        logging.warning(f'User attempted to access list assignment without logging in as an admin')
         return redirect('/login')
     
     assign_form = AssignListForm()
@@ -592,11 +638,13 @@ def assign_lists():
                 user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
                 if user_result is None:
                     flash('User does not exist', 'error')
+                    logging.warning(f'User {session['username']} attempted to assign a list to a non-existent user')
                     return redirect('/admin_dashboard/lists')
 
                 list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()
                 if list_result is None:
                     flash('List does not exist', 'error')
+                    logging.warning(f'User {session['username']} attempted to assign a non-existent list to a user')
                     return redirect('/admin_dashboard/lists')
 
                 user_id = user_result[0]
@@ -605,12 +653,14 @@ def assign_lists():
                 student_result = cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,)).fetchone()
                 if student_result is None:
                     flash('User is not a student', 'error')
+                    logging.warning(f'User {session['username']} attempted to assign a list to a non-student user')
                     return redirect('/admin_dashboard/lists')
 
                 student_id = student_result[0]
 
                 cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (student_id, list_id))
                 if cursor.fetchone()[0] > 0:
+                    logging.warning(f'User {session['username']} attempted to assign a list to a user that already has it')
                     flash('List already assigned to user', 'error')
                     return redirect('/admin_dashboard/lists')
 
@@ -618,14 +668,19 @@ def assign_lists():
 
                 conn.commit()
                 flash('List assigned successfully', 'success')
+                logging.info(f"User {session['username']} assigned list {listname} to user {username}")
         else:
             flash('Invalid request', 'error')
+            logging.warning(f'User {session['username']} made an invalid request to assign a list')
     except sqlite3.IntegrityError as e:  # using this to catch the foreign key constraint error
         flash(f'Integrity error: {e}', 'error')
+        logging.error(f'Integrity error: {e} on assigning list')
     except sqlite3.Error as e:  # using this to catch any other database error
         flash(f'Database error: {e}', 'error')
+        logging.error(f'Database error: {e} on assigning list')
     except Exception as e:
         flash(f'An error occurred: {e}', 'error')
+        logging.error(f'An error occurred: {e} on assigning list')
     return redirect('/admin_dashboard/lists')
 
 # Making Flask run on SSL

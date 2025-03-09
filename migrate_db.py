@@ -1,15 +1,18 @@
-import sqlite3
+import re
 
-def check_schema():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
+def test_password(password):
+    patterns = {
+        'uppercase': r'[A-Z]',
+        'lowercase': r'[a-z]',
+        'number': r'[0-9]',
+        'special': r'[@$%*?&]'
+    }
 
-    cursor.execute('PRAGMA table_info(users)')
-    columns = cursor.fetchall()
-    for column in columns:
-        print(column)
+    results = {}
+    for key, pattern in patterns.items():
+        results[key] = bool(re.search(pattern, password))
 
-    conn.close()
+    return results
 
-if __name__ == "__main__":
-    check_schema()
+password = 'Password1@'
+print(test_password(password))
