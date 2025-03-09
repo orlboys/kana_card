@@ -2,3 +2,5 @@
 # Ignore SSL/TLS certificate and key files
 cert.pem
 key.pem
+
+depreciated_templates/

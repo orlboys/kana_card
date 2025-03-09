@@ -74,34 +74,43 @@ function openListDeleteModal(id) {
 
 
 // FLASHCARD ADDING FUNCTIONALITY //
-let flashcardCount = 1;
-
 function addFlashcard() {
-    flashcardCount++;
-    document.getElementById('flashcard_count').value = flashcardCount; // Update the hidden input field
-    const container = document.getElementById('flashcards-container');
-    const flashcardDiv = document.createElement('div');
-    flashcardDiv.className = 'flashcards-container';
+    let container = document.getElementById('flashcards-container');
+    let index = container.children.length + 1; // Get current count of flashcards
+
+    let flashcardDiv = document.createElement('div');
+    flashcardDiv.className = 'flashcard-form my-3';
     flashcardDiv.innerHTML = `
-        <div class="flashcard-form my-3">
-            <div class="form-group">
-                <label for="flashcard_question_${flashcardCount}">Question ${flashcardCount}:</label>
-                <input type="text" class="form-control" name="flashcard_question_${flashcardCount}" id="flashcard_question_${flashcardCount}" placeholder="Question" required>
-            </div>
-            <div class="form-group">
-                <label for="flashcard_answer_${flashcardCount}">Answer ${flashcardCount}:</label>
-                <input type="text" class="form-control" name="flashcard_answer_${flashcardCount}" id="flashcard_answer_${flashcardCount}" placeholder="Answer" required>
-            </div>
-            <button type="button" class="btn btn-danger" onclick="removeFlashcard(this)">Remove</button>
+        <div class="form-group">
+            <label>Question ${index}:</label>
+            <input type="text" class="form-control" name="flashcards-${index}-question" required>
         </div>
+        <div class="form-group">
+            <label>Answer ${index}:</label>
+            <input type="text" class="form-control" name="flashcards-${index}-answer" required>
+        </div>
+        <button type="button" class="btn btn-danger" onclick="removeFlashcard(this)">Remove</button>
     `;
+
     container.appendChild(flashcardDiv);
 }
 
 function removeFlashcard(button) {
-    button.parentElement.remove();
-    flashcardCount--;
-    document.getElementById('flashcard_count').value = flashcardCount; // Update the hidden input field
+    button.parentElement.remove(); // Remove the flashcard
+
+    // Re-index all remaining flashcards
+    document.querySelectorAll('.flashcard-form').forEach((flashcard, i) => {
+        let newIndex = i + 1;
+        let labels = flashcard.querySelectorAll("label");
+        labels[0].textContent = `Question ${newIndex}:`;
+        labels[1].textContent = `Answer ${newIndex}:`;
+
+        let inputs = flashcard.querySelectorAll("input");
+        inputs[0].name = `flashcards-${newIndex}-question`;
+        inputs[0].id = `flashcards-${newIndex}-question`;
+        inputs[1].name = `flashcards-${newIndex}-answer`;
+        inputs[1].id = `flashcards-${newIndex}-answer`;
+    });
 }
 
 function searchListTable() {

@@ -1,7 +1,6 @@
 # Description: This file contains the main Flask application for the Flashcard Web Application.
 # IMPROVEMENTS TO MAKE:
 
-# - add more error handling and validation for the forms.
 # - add more comments to explain the logic of the code.
 
 # Flask / Functionality Imports
@@ -10,10 +9,12 @@ from flask import Flask, render_template, request, redirect, session, flash # Fl
 
 # Security Imports
 from werkzeug.security import generate_password_hash, check_password_hash # For hashing passwords
-import re # For regex validation
 from markupsafe import escape # For escaping user input
 from flask_wtf import CSRFProtect # For CSRF protection
-from forms import LoginForm, RegisterForm, FlashcardForm, ListForm, UserEditForm, ListEditForm, AssignListForm, MFAVerificationForm, LogoutForm, DeleteItemForm # For form validation and CSRF protection
+from forms import LoginForm, RegisterForm, ListForm, UserEditForm, ListEditForm, AssignListForm, MFAVerificationForm, LogoutForm, DeleteItemForm # For input validation and CSRF protection
+from flask_limiter import Limiter # For rate limiting
+from flask_limiter.util import get_remote_address # For rate limiting
+from datetime import timedelta # For session timeout
 
 # MFA Imports
 import pyotp # For MFA
@@ -21,6 +22,12 @@ import qrcode # For generating QR codes
 
 app = Flask(__name__)
 app.secret_key = 'placeholder_secret_key' #change this for deployment >:(
+
+# Session Timeout
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=15)
+
+# Rate Limiting
+limiter = Limiter(get_remote_address, app=app, default_limits=["5 per minute"])
 
 # CSRF Protection
 csrf = CSRFProtect(app)
@@ -36,72 +43,78 @@ app.config.update(
 @app.before_request
 def enforce_https():
     if not request.is_secure and app.env != "development":
-        return redirect(request.url.replace("http://", "https://"))
+        return redirect(request.url.replace("http://", "https://")) # NOTE: THIS IS A TEMPORARY SOLUTION FOR OFFLINE TESTING PURPOSES. PLEASE USE redirect("https://domain_name.com/" + request.path) FOR PRODUCTION!
+
+def make_session_permanent():
+    session.permanent = True
 
 # Context Processor to make Logout Form available Globally
 @app.context_processor
 def inject_logout_form():
     return dict(logout_form=LogoutForm())
 
-# Database Initialisation
 def init_db():
     conn = sqlite3.connect('database.db')
-    conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
+    conn.execute("PRAGMA foreign_keys = ON")
     c = conn.cursor()
 
-    # USER MANAGEMENT TABLES #
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL, 
-        password TEXT NOT NULL,
-        f_name TEXT NOT NULL,
-        l_name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        admin BOOLEAN DEFAULT FALSE,
-        mfa_secret TEXT
-    );
-    ''')
+    try:
+        c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL,
+            f_name TEXT NOT NULL,
+            l_name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            admin BOOLEAN DEFAULT FALSE,
+            mfa_secret TEXT
+        );
+        ''')
 
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS students (
-        student_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER UNIQUE NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-    ''')
+        c.execute('''
+        CREATE TABLE IF NOT EXISTS students (
+            student_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+        ''')
 
-    # LIST MANAGEMENT TABLES #
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS flashcard_lists (
-        list_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        list_name TEXT NOT NULL
-    )
-    ''')
+        c.execute('''
+        CREATE TABLE IF NOT EXISTS flashcard_lists (
+            list_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_name TEXT NOT NULL
+        )
+        ''')
 
-    # MANY TO MANY RELATIONSHIP - STUDENTS AND LISTS #
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS list_students (
-        list_id INTEGER NOT NULL,
-        student_id INTEGER NOT NULL,
-        PRIMARY KEY (list_id, student_id),
-        FOREIGN KEY (list_id) REFERENCES flashcard_lists(list_id) ON DELETE CASCADE,
-        FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
-    )
-    ''')
+        c.execute('''
+        CREATE TABLE IF NOT EXISTS list_students (
+            list_id INTEGER NOT NULL,
+            student_id INTEGER NOT NULL,
+            PRIMARY KEY (list_id, student_id),
+            FOREIGN KEY (list_id) REFERENCES flashcard_lists(list_id) ON DELETE CASCADE,
+            FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
+        )
+        ''')
 
-    c.execute('''
-    CREATE TABLE IF NOT EXISTS flashcards (
-        card_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        list_id INTEGER NOT NULL,
-        question TEXT NOT NULL,
-        answer TEXT NOT NULL,
-        FOREIGN KEY (list_id) REFERENCES flashcard_lists(list_id) ON DELETE CASCADE
-    )
-    ''')
+        c.execute('''
+        CREATE TABLE IF NOT EXISTS flashcards (
+            card_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_id INTEGER NOT NULL,
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            FOREIGN KEY (list_id) REFERENCES flashcard_lists(list_id) ON DELETE CASCADE
+        )
+        ''')
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        conn.rollback()
+        # Handle the error appropriately (e.g., log it, display an error message)
+        # It might be appropriate to re-raise the exception in some cases
+    finally:
+        conn.close()
 
 init_db()
 
@@ -111,6 +124,7 @@ def get_db_connection():
     return conn
 
 @app.route('/')
+@limiter.limit("5 per minute")
 def index():
     # This will probably be like a massive 'redirect' function. Something like:
     # If user is a student, redirect to student dashboard. If user is an admin, redirect to admin dashboard. Else, redirect to the login page.
@@ -125,6 +139,7 @@ def index():
 ## ACCOUNT MANAGEMENT ##
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     login_form = LoginForm()
     mfa_form= MFAVerificationForm()
@@ -134,7 +149,7 @@ def login():
 
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM users WHERE username = ?', (escape(username),))
+            cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
             user = cursor.fetchone()
 
         if user and check_password_hash(user[2], escape(password)):
@@ -151,6 +166,7 @@ def login():
 
 ## MFA ##
 @app.route('/mfa_setup', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def mfa_setup():
     if 'pending_user' not in session:
         return redirect('/login')
@@ -179,6 +195,7 @@ def mfa_setup():
     return render_template('mfa_setup.html', qr_path=qr_path)
 
 @app.route('/verify_mfa', methods=['POST'])
+@limiter.limit("5 per minute")
 def verify_mfa():
     if 'pending_user' not in session:
         return redirect('/login')
@@ -222,6 +239,7 @@ def verify_mfa():
     return redirect('/login')
 
 @app.route('/register', methods=['GET','POST'])
+@limiter.limit("3 per minute")
 # NOTE: for now, this is just signing up all new users as students. 
 def register():
     register_form = RegisterForm()
@@ -234,37 +252,39 @@ def register():
 
         hashed_password = generate_password_hash(password)
         with get_db_connection() as conn:
-            conn = sqlite3.connect('database.db')
             cursor = conn.cursor()
 
-            cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', (escape(username),))
+            cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', (username,))
             user_exists = cursor.fetchone()[0] > 0
 
             if user_exists:
                 flash('User already exists.', 'error')
             else:
-                #Inserting into the Users Table
-                cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (escape(username), escape(hashed_password), escape(f_name), escape(l_name), escape(email), False))
-                conn.commit()
-
-                #Getting the user_id of the user that was just inserted
-                user_id = cursor.lastrowid
-
-                #Inserting into the Students Table
-                cursor.execute('INSERT INTO students (user_id) VALUES (?)', (user_id,))
-                conn.commit()
-
-                #Adding a default list for the user
-                cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction" AND list_id = 10')
-                list_result = cursor.fetchone()
-                if list_result:
-                    if cursor.fetchone() == 0:
-                        cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, user_id))
+                try:
+                    #Inserting into the Users Table
+                    cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (username, hashed_password, f_name, l_name, email, False))
                     conn.commit()
 
-                flash('Registration successful.')
+                    #Getting the user_id of the user that was just inserted
+                    user_id = cursor.lastrowid
+
+                    #Inserting into the Students Table
+                    cursor.execute('INSERT INTO students (user_id) VALUES (?)', (user_id,))
+                    conn.commit()
+
+                    #Adding a default list for the user
+                    cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction" AND list_id = 10')
+                    list_result = cursor.fetchone()
+                    if list_result:
+                        if cursor.fetchone() == 0:
+                            cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, user_id))
+                        conn.commit()
+
+                    flash('Registration successful.')
+                except sqlite3.Error as e:
+                    flash(f'Database error: {e}', 'error')
+                    conn.rollback()
                 return redirect('/login')
-            
     return render_template('register.html', register_form=register_form)
 
 @app.route('/logout', methods=['POST']) # POST request to prevent CSRF
@@ -284,27 +304,30 @@ def student_dashboard():
     if not session.get('logged_in') or session.get('admin'):
         return redirect('/login')
     
-    def get_student_lists(user_id): 
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,))
-        student_id = cursor.fetchone()[0]
-        print("Session user_id:", session.get('user_id'))
-        print("Fetched Student_id", student_id)
+    def get_student_lists(user_id):
+        with get_db_connection as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,))
+                student_id = cursor.fetchone()[0]
+                print("Session user_id:", session.get('user_id'))
+                print("Fetched Student_id", student_id)
 
-        cursor.execute('''
-        SELECT list_id, list_name
-        FROM flashcard_lists
-        WHERE list_id IN (
-            SELECT list_id
-            FROM list_students
-            WHERE student_id = ?
-        )
-        ''', (student_id,)) # logic explanation: get all list records where the list_id is in the many-to-many table for the student
+                cursor.execute('''
+                SELECT list_id, list_name
+                FROM flashcard_lists
+                WHERE list_id IN (
+                    SELECT list_id
+                    FROM list_students
+                    WHERE student_id = ?
+                )
+                ''', (student_id,)) # logic explanation: get all list records where the list_id is in the many-to-many table for the student
 
-        lists = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
-        print (lists)
-        conn.close()
+                lists = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
+            except sqlite3.Error as e:
+                flash(f'Database error: {e}', 'error')
+                lists = []
+        print(lists)
         return lists
     
     return render_template('student_dashboard.html', lists = get_student_lists(session.get('user_id')))
@@ -313,21 +336,27 @@ def student_dashboard():
 def list_card(list_id, card_index=0):
     if not session.get('logged_in') or session.get('admin'):
         return redirect('/login')
-
+    
     def get_list_name(list_id):
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT list_name FROM flashcard_lists WHERE list_id = ?', (list_id,))
-        list_name = cursor.fetchone()[0]
-        conn.close()
+        with get_db_connection() as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute('SELECT list_name FROM flashcard_lists WHERE list_id = ?', (list_id,))
+                list_name = cursor.fetchone()[0]
+            except sqlite3.Error as e:
+                flash(f'Database error, unable to fetch list name: {e}', 'error')
+                list_name = None
         return list_name
 
     def get_flashcards(list_id):
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT question, answer FROM flashcards WHERE list_id = ?', (list_id,))
-        flashcards = cursor.fetchall()
-        conn.close()
+        with get_db_connection() as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute('SELECT question, answer FROM flashcards WHERE list_id = ?', (list_id,))
+                flashcards = cursor.fetchall()
+            except sqlite3.Error as e:
+                flash(f'Database error, unable to fetch flashcards: {e}', 'error')
+                flashcards = []
         return flashcards
 
     flashcards = get_flashcards(list_id)
@@ -362,36 +391,44 @@ def list_management():
         return redirect('/login')
 
     def get_all_lists():
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-
-        cursor.execute('SELECT list_id, list_name FROM flashcard_lists')
-        lists = cursor.fetchall()
-        conn.close()
+        with get_db_connection() as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute('SELECT list_id, list_name FROM flashcard_lists')
+                lists = cursor.fetchall()
+            except sqlite3.Error as e:
+                flash(f'Database error - Unable to fetch Lists: {e}', 'error')
+                lists = []
         return lists
     
-    def get_all_usernames():
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-
-        cursor.execute('SELECT username FROM users')
-        usernames = [row[0] for row in cursor.fetchall()]
-        conn.close()
+    def get_all_usernames(): # Get all usernames for the assign list form
+        with get_db_connection() as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute('SELECT username FROM users')
+                usernames = [row[0] for row in cursor.fetchall()]
+            except sqlite3.Error as e:
+                flash(f'Database error - Unable to fetch Usernames: {e}', 'error')
+                usernames = []
         return usernames
 
     def get_all_listnames():
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-
-        cursor.execute('SELECT list_name FROM flashcard_lists')
-        listnames = [row[0] for row in cursor.fetchall()]
-        conn.close()
+        with get_db_connection as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute('SELECT list_name FROM flashcard_lists')
+                listnames = [row[0] for row in cursor.fetchall()]
+            except sqlite3.Error as e:
+                flash(f'Database error - Unable to fetch Listnames: {e}', 'error')
+                listnames = []
         return listnames
     
     list_form = ListEditForm()
     delete_form = DeleteItemForm()
+    add_list_form = ListForm()
+    assign_form = AssignListForm()
 
-    return render_template('list_management.html', lists = get_all_lists(), usernames = get_all_usernames(), listnames = get_all_listnames(), list_form=list_form, delete_form=delete_form)
+    return render_template('list_management.html', lists = get_all_lists(), usernames = get_all_usernames(), listnames = get_all_listnames(), list_form=list_form, delete_form=delete_form, add_list_form=add_list_form, assign_form=assign_form)
 
 ## USER MANAGEMENT ##
 
@@ -401,13 +438,16 @@ def user_management():
         return redirect('/login')
     
     def get_all_users():
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
+        with get_db_connection() as conn:
+            try:
+                cursor = conn.cursor()
 
-        cursor.execute('SELECT id, username, f_name, l_name, email, admin FROM users')
-        users = cursor.fetchall()
-        print("Fetched Users:", users)  # Debug print
-        conn.close()
+                cursor.execute('SELECT id, username, f_name, l_name, email, admin FROM users')
+                users = cursor.fetchall()
+                print("Fetched Users:", users)  # Debug print
+            except sqlite3.Error as e:
+                flash(f'Database error - Unable to fetch Users: {e}', 'error')
+                users = []
         return users
     
     user_form = UserEditForm()
@@ -416,6 +456,7 @@ def user_management():
 
 
 @app.route('/edit_item', methods=["POST"])
+@limiter.limit("5 per minute")
 def edit_item():
     user_form = UserEditForm()
     list_form = ListEditForm()
@@ -441,7 +482,7 @@ def edit_item():
             try:
                 cursor.execute(
                     "UPDATE users SET username = ?, f_name = ?, l_name = ?, email = ?, admin = ? WHERE id = ?",
-                    (escape(new_username), escape(new_first_name), escape(new_last_name), escape(new_email), admin_value, id)
+                    (new_username, new_first_name, new_last_name, new_email, admin_value, id)
                 )
                 conn.commit()
             except sqlite3.Error as e:
@@ -459,7 +500,7 @@ def edit_item():
             try:
                 cursor.execute(
                     "UPDATE flashcard_lists SET list_name = ? WHERE list_id = ?",
-                    (escape(new_listname), id)
+                    (new_listname, id)
                 )
                 conn.commit()
             except sqlite3.Error as e:
@@ -471,6 +512,7 @@ def edit_item():
     return redirect('/admin_dashboard')
 
 @app.route('/delete_item', methods=["POST"])
+@limiter.limit("4 per minute")
 def delete_item():
     delete_form = DeleteItemForm(request.form)
     print("Raw Form Data: ", request.form)
@@ -482,21 +524,25 @@ def delete_item():
         print(f"Delete Type: {type}")
         print(f"Delete ID: {id}")
         with get_db_connection() as conn:
-            cursor = conn.cursor()
-            if type == "list":
-                cursor.execute(
-                    "DELETE FROM flashcard_lists WHERE list_id = ?",
-                    (id,)
-                )
-                cursor.execute(
-                    "DELETE FROM flashcards WHERE list_id = ?", 
-                    (id,))
-            elif type == "user":
-                cursor.execute(
-                    "DELETE FROM users WHERE id = ?",
-                    (id,)
-                )
-            conn.commit()
+            try:
+                cursor = conn.cursor()
+                if type == "list":
+                    cursor.execute(
+                        "DELETE FROM flashcard_lists WHERE list_id = ?",
+                        (id,)
+                    )
+                    cursor.execute(
+                        "DELETE FROM flashcards WHERE list_id = ?", 
+                        (id,))
+                elif type == "user":
+                    cursor.execute(
+                        "DELETE FROM users WHERE id = ?",
+                        (id,)
+                    )
+                conn.commit()
+            except sqlite3.Error as e:
+                flash(f'Database error: {e}', 'error')
+                conn.rollback()
         if type == "list":
             return redirect('/admin_dashboard/lists')
         elif type == "user":
@@ -505,97 +551,83 @@ def delete_item():
     return redirect('/admin_dashboard')
 
 @app.route('/admin_dashboard/lists/add_list', methods=['GET', 'POST'])
+@limiter.limit("3 per minute")
 def add_list():
     if not session.get('logged_in') or not session.get('admin'):
         return redirect('/login')
-
-    if request.method == 'POST':
-        list_name = request.form.get('list_name')
-        flashcard_count = request.form.get('flashcard_count')  # Get the flashcard count from the form
-        
-        if flashcard_count is None:
-            flashcard_count = 0
-        else:
-            flashcard_count = int(flashcard_count)
-        
-        # Collect flashcards
-        flashcards = []
-        for i in range(1, flashcard_count + 1):
-            question = request.form.get(f'flashcard_question_{i}')
-            answer = request.form.get(f'flashcard_answer_{i}')
-            if question and answer:
-                flashcards.append((question, answer))
-
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-
-        # Insert the new list
-        cursor.execute('INSERT INTO flashcard_lists (list_name) VALUES (?)', (escape(list_name,)))
-        list_id = cursor.lastrowid
-
-        # Insert the flashcards
-        for question, answer in flashcards:
-            cursor.execute('INSERT INTO flashcards (list_id, question, answer) VALUES (?, ?, ?)', (list_id, escape(question), escape(answer)))
-
-        conn.commit()
-        conn.close()
-
-        flash('List added successfully', 'success')
-        return redirect('/admin_dashboard/lists')
-
-    return render_template('add_list.html')
+    
+    add_list_form=ListForm()
+    if add_list_form.validate_on_submit() and add_list_form.flashcards.data:
+        list_name = add_list_form.list_name.data
+        flashcards = [{'question': fc.question.data, 'answer': fc.answer.data} for fc in add_list_form.flashcards]
+        with get_db_connection() as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute('INSERT INTO flashcard_lists (list_name) VALUES (?)', (list_name,))
+                list_id = cursor.lastrowid
+                for flashcard in flashcards:
+                    cursor.execute('INSERT INTO flashcards (list_id, question, answer) VALUES (?, ?, ?)', (list_id, flashcard['question'], flashcard['answer'] ))
+                conn.commit()
+                flash('List Added', 'success')
+            except sqlite3.Error as e:
+                flash(f'Database error: {e}', 'error')
+                conn.rollback()
+    return redirect('/admin_dashboard/lists')
 
 @app.route('/assign_lists', methods=['POST'])
 def assign_lists():
     if not session.get('logged_in') or not session.get('admin'):
         return redirect('/login')
+    
+    assign_form = AssignListForm()
 
-    username = request.form.get('username')
-    listname = request.form.get('listname')
+    username = assign_form.username.data
+    listname = assign_form.listname.data
     
     try:
-        conn = sqlite3.connect('database.db')
-        conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
-        cursor = conn.cursor()
+        if assign_form.validate_on_submit():
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
 
-        user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (escape(username),)).fetchone()
-        if user_result is None:
-            flash('User does not exist', 'error')
-            return redirect('/admin_dashboard/lists')
+                user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+                if user_result is None:
+                    flash('User does not exist', 'error')
+                    return redirect('/admin_dashboard/lists')
 
-        list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (escape(listname),)).fetchone()
-        if list_result is None:
-            flash('List does not exist', 'error')
-            return redirect('/admin_dashboard/lists')
+                list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()
+                if list_result is None:
+                    flash('List does not exist', 'error')
+                    return redirect('/admin_dashboard/lists')
 
-        user_id = user_result[0]
-        list_id = list_result[0]
+                user_id = user_result[0]
+                list_id = list_result[0]
 
-        student_result = cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,)).fetchone()
-        if student_result is None:
-            flash('User is not a student', 'error')
-            return redirect('/admin_dashboard/lists')
+                student_result = cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,)).fetchone()
+                if student_result is None:
+                    flash('User is not a student', 'error')
+                    return redirect('/admin_dashboard/lists')
 
-        student_id = student_result[0]
+                student_id = student_result[0]
 
-        cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (student_id, list_id))
-        if cursor.fetchone()[0] > 0:
-            flash('List already assigned to user', 'error')
-            return redirect('/admin_dashboard/lists')
+                cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (student_id, list_id))
+                if cursor.fetchone()[0] > 0:
+                    flash('List already assigned to user', 'error')
+                    return redirect('/admin_dashboard/lists')
 
-        cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (student_id, list_id))
+                cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (student_id, list_id))
 
-        conn.commit()
-        flash('List assigned successfully', 'success')
+                conn.commit()
+                flash('List assigned successfully', 'success')
+        else:
+            flash('Invalid request', 'error')
     except sqlite3.IntegrityError as e:  # using this to catch the foreign key constraint error
         flash(f'Integrity error: {e}', 'error')
     except sqlite3.Error as e:  # using this to catch any other database error
         flash(f'Database error: {e}', 'error')
-    finally:  # will always run - connection with the database must always be closed
-        conn.close()
-
+    except Exception as e:
+        flash(f'An error occurred: {e}', 'error')
     return redirect('/admin_dashboard/lists')
 
 # Making Flask run on SSL
 if __name__ == '__main__':
-    app.run(debug=True, ssl_context=('cert.pem', 'key.pem'), host="0.0.0.0", port=443)
+    app.run(debug=True, ssl_context=('cert.pem', 'key.pem'), host="0.0.0.0", port=443) # Change to debug=False for production

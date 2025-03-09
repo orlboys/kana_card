@@ -1,8 +1,8 @@
 # Description: This file contains the form classes for the login, registration, flashcard, list, and user management forms.
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, TextAreaField, SelectField, HiddenField
-from wtforms.validators import DataRequired, Length, Email
+from wtforms import StringField, PasswordField, SubmitField, TextAreaField, SelectField, HiddenField, FieldList, FormField
+from wtforms.validators import DataRequired, Length, Email, Regexp
 
 # Define the login form !
 class LoginForm(FlaskForm):
@@ -13,25 +13,31 @@ class LoginForm(FlaskForm):
 # Define the registration form
 class RegisterForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=1, max=255)])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=1, max=255)])
+    password = PasswordField('Password', 
+                            validators=[
+                                DataRequired(),
+                                Length(min=8, message='Password must be at least 8 characters long'),
+                                Regexp(r'[A-Z]', message="Password must contain at least one uppercase letter."),
+                                Regexp(r'[a-z]', message="Password must contain at least one lowercase letter."),
+                                Regexp(r'[0-9]', message="Password must contain at least one number."),
+                                Regexp(r'[@$!%*?&]', message="Password must contain at least one special character.")
+                                ]
+                            )
     first_name = StringField('First Name', validators=[DataRequired(), Length(min=1, max=255)])
     last_name = StringField('Last Name', validators=[DataRequired(), Length(min=1, max=255)])
     email = StringField('Email', validators=[DataRequired(), Email(), Length(min=1, max=255)])
     submit = SubmitField('Register')
 
-# Define the flashcard form
+# Defining the Adding List form (Two Parts)
+# Defining the Dynamically-Added Flashcard Forms
 class FlashcardForm(FlaskForm):
-    question = StringField('Question', validators=[DataRequired(), Length(min=1, max=255)])
-    answer = TextAreaField('Answer', validators=[DataRequired(), Length(min=1, max=1000)])
-    submit = SubmitField('Add Flashcard')
+    question=StringField('Question', validators=[DataRequired(), Length(min=1, max=255)])
+    answer=StringField('Answer', validators=[DataRequired(), Length(min=1, max=500)])
 
-# Define the list form
+# Defining the List Form (the list name)
 class ListForm(FlaskForm):
-    list_name = StringField('List Name', validators=[DataRequired(), Length(min=1, max=255)])
-    flashcard_question_1 = StringField('Question 1', validators=[DataRequired(), Length(min=1, max=255)])
-    flashcard_answer_1 = StringField('Answer 1', validators=[DataRequired(), Length(min=1, max=255)])
-    flashcard_count = HiddenField('Flashcard Count', default=1)
-    submit = SubmitField('Save List')
+    list_name = StringField('List Name', validators=[DataRequired()])
+    flashcards = FieldList(FormField(FlashcardForm), min_entries=1)
 
 # Define the user edit form !
 class UserEditForm(FlaskForm):
