@@ -17,6 +17,7 @@ from flask_limiter.util import get_remote_address # For rate limiting
 from markupsafe import escape # For escaping user input
 from datetime import timedelta # For session timeout
 import logging # For logging
+from error_handlers import register_error_handlers # For error handling
 
 # MFA Imports
 import pyotp # For MFA
@@ -55,6 +56,9 @@ def enforce_https():
 
 def make_session_permanent():
     session.permanent = True
+
+# Error Handlers
+register_error_handlers(app)
 
 # Context Processor to make Logout Form available Globally
 @app.context_processor
@@ -169,7 +173,7 @@ def login():
                 return redirect('/mfa_setup')
             return render_template('login.html', login_form=login_form, mfa_form=mfa_form, show_mfa_modal=True)
         else:
-            flash('Invalid credentials', 'error')
+            flash('The username or password you entered is incorrect. Please try again.', 'error')
             logging.warning(f'Failed login attempt for user {username}')
 
     return render_template('login.html', login_form=login_form, mfa_form=mfa_form, show_mfa_modal=False)
@@ -234,7 +238,7 @@ def verify_mfa():
             session['l_name'] = user[4]
             session['email'] = user[5]
             session['admin'] = user[6]  # Assuming admin is the 7th column
-            flash('You were successfully logged in')
+            flash('You were successfully logged in', 'success')
             print("Logged in as:", session.get('username'))
             print("Admin status:", session.get('admin'))
             print("User ID:", session.get('user_id'))
@@ -246,17 +250,17 @@ def verify_mfa():
             logging.info(f"User {session['username']} successfully logged in")
             return redirect('/')
         else:
-            flash('Invalid OTP', 'error')
+            flash('The OTP you entered is incorrect. Please try again.', 'error')
             logging.warning(f'Failed MFA verification for userid {session["pending_user"]}')
             return redirect('/login')
     return redirect('/login')
 
 
-@app.route('/register', methods=['GET','POST'])
+@app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def register():
     register_form = RegisterForm()
-    if register_form.validate_on_submit(): # i.e. if it's a form submission
+    if register_form.validate_on_submit():  # i.e. if it's a form submission
         username = escape(register_form.username.data)
         password = register_form.password.data
         f_name = escape(register_form.first_name.data)
@@ -264,17 +268,17 @@ def register():
         email = escape(register_form.email.data)
 
         hashed_password = generate_password_hash(password)
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
+        try:
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
 
-            cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', (username,))
-            user_exists = cursor.fetchone()[0] > 0
+                cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', (username,))
+                user_exists = cursor.fetchone()[0] > 0
 
-            if user_exists:
-                flash('User already exists.', 'error')
-                logging.warning(f'User attempted to register as {username}, who already exists')
-            else:
-                try:
+                if user_exists:
+                    flash('The username you entered is already taken. Please choose a different username.', 'error')
+                    logging.warning(f'User attempted to register as {username}, who already exists')
+                else:
                     # Inserting into the Users Table
                     cursor.execute('INSERT INTO users (username, password, f_name, l_name, email, admin) VALUES (?, ?, ?, ?, ?, ?)', (username, hashed_password, f_name, l_name, email, False))
                     conn.commit()
@@ -293,18 +297,19 @@ def register():
                         if cursor.fetchone() == 0:
                             cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, user_id))
                         conn.commit()
-                    flash('Registration successful.')
+                    flash('Registration successful.', 'success')
                     logging.info(f"User {username} registered successfully")
-                except sqlite3.Error as e:
-                    flash(f'Database error: {e}', 'error')
-                    conn.rollback()
-                    logging.error(f'Database error: {e} on user registration')
-                return redirect('/login')
+        except sqlite3.Error as e:
+            flash('An unexpected error occurred while processing your request. Please try again later.', 'error')
+            logging.error(f'Database error: {e} on user registration')
+            conn.rollback()
+        return redirect('/login')
     else:
+        flash('There was an error with your form submission. Please check your input and try again.', 'error')
         logging.warning("User made an invalid request to register")
         logging.debug(f"Form data: {register_form.data}")
         logging.debug(f"Form errors: {register_form.errors}")
-    
+
     return render_template('register.html', register_form=register_form)
 
 @app.route('/logout', methods=['POST']) # POST request to prevent CSRF
@@ -638,14 +643,14 @@ def assign_lists():
 
                 user_result = cursor.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
                 if user_result is None:
-                    flash('User does not exist', 'error')
-                    logging.warning(f'User {session['username']} attempted to assign a list to a non-existent user')
+                    flash('The specified user does not exist. Please check the username and try again.', 'error')
+                    logging.warning(f'User {session["username"]} attempted to assign a list to a non-existent user')
                     return redirect('/admin_dashboard/lists')
 
                 list_result = cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = ?', (listname,)).fetchone()
                 if list_result is None:
-                    flash('List does not exist', 'error')
-                    logging.warning(f'User {session['username']} attempted to assign a non-existent list to a user')
+                    flash('The specified list does not exist. Please check the list name and try again.', 'error')
+                    logging.warning(f'User {session["username"]} attempted to assign a non-existent list to a user')
                     return redirect('/admin_dashboard/lists')
 
                 user_id = user_result[0]
@@ -653,16 +658,16 @@ def assign_lists():
 
                 student_result = cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,)).fetchone()
                 if student_result is None:
-                    flash('User is not a student', 'error')
-                    logging.warning(f'User {session['username']} attempted to assign a list to a non-student user')
+                    flash('The specified user is not a student. Please check the user details and try again.', 'error')
+                    logging.warning(f'User {session["username"]} attempted to assign a list to a non-student user')
                     return redirect('/admin_dashboard/lists')
 
                 student_id = student_result[0]
 
                 cursor.execute('SELECT COUNT(*) FROM list_students WHERE student_id = ? AND list_id = ?', (student_id, list_id))
                 if cursor.fetchone()[0] > 0:
-                    logging.warning(f'User {session['username']} attempted to assign a list to a user that already has it')
-                    flash('List already assigned to user', 'error')
+                    logging.warning(f'User {session["username"]} attempted to assign a list to a user that already has it')
+                    flash('The list is already assigned to the specified user.', 'error')
                     return redirect('/admin_dashboard/lists')
 
                 cursor.execute('INSERT INTO list_students (student_id, list_id) VALUES (?, ?)', (student_id, list_id))
@@ -671,16 +676,16 @@ def assign_lists():
                 flash('List assigned successfully', 'success')
                 logging.info(f"User {session['username']} assigned list {listname} to user {username}")
         else:
-            flash('Invalid request', 'error')
-            logging.warning(f'User {session['username']} made an invalid request to assign a list')
+            flash('There was an error with your form submission. Please check your input and try again.', 'error')
+            logging.warning(f'User {session["username"]} made an invalid request to assign a list')
     except sqlite3.IntegrityError as e:  # using this to catch the foreign key constraint error
-        flash(f'Integrity error: {e}', 'error')
+        flash('An unexpected error occurred while processing your request. Please try again later.', 'error')
         logging.error(f'Integrity error: {e} on assigning list')
     except sqlite3.Error as e:  # using this to catch any other database error
-        flash(f'Database error: {e}', 'error')
+        flash('An unexpected error occurred while processing your request. Please try again later.', 'error')
         logging.error(f'Database error: {e} on assigning list')
     except Exception as e:
-        flash(f'An error occurred: {e}', 'error')
+        flash('An unexpected error occurred. Please try again later.', 'error')
         logging.error(f'An error occurred: {e} on assigning list')
     return redirect('/admin_dashboard/lists')
 
