@@ -136,7 +136,6 @@ def get_db_connection():
     return conn
 
 @app.route('/')
-@limiter.limit("5 per minute")
 def index():
     # This will probably be like a massive 'redirect' function. Something like:
     # If user is a student, redirect to student dashboard. If user is an admin, redirect to admin dashboard. Else, redirect to the login page.
@@ -151,7 +150,6 @@ def index():
 ## ACCOUNT MANAGEMENT ##
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
 def login():
     login_form = LoginForm()
     mfa_form = MFAVerificationForm()
@@ -180,7 +178,6 @@ def login():
 
 ## MFA ##
 @app.route('/mfa_setup', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
 def mfa_setup():
     if 'pending_user' not in session:
         logging.warning("User attempted to access MFA setup without logging in")
@@ -210,7 +207,6 @@ def mfa_setup():
     return render_template('mfa_setup.html', qr_path=qr_path)
 
 @app.route('/verify_mfa', methods=['POST'])
-@limiter.limit("5 per minute")
 def verify_mfa():
     if 'pending_user' not in session:
         return redirect('/login')
@@ -257,7 +253,6 @@ def verify_mfa():
 
 
 @app.route('/register', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
 def register():
     register_form = RegisterForm()
     if register_form.validate_on_submit():  # i.e. if it's a form submission
@@ -295,7 +290,9 @@ def register():
                     list_result = cursor.fetchone()
                     if list_result:
                         if cursor.fetchone() == 0:
-                            cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, user_id))
+                            cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,))
+                            student_id = cursor.fetchone()[0]
+                            cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, student_id))
                         conn.commit()
                     flash('Registration successful.', 'success')
                     logging.info(f"User {username} registered successfully")
@@ -451,7 +448,7 @@ def list_management():
         return usernames
 
     def get_all_listnames():
-        with get_db_connection as conn:
+        with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute('SELECT list_name FROM flashcard_lists')
@@ -599,7 +596,7 @@ def delete_item():
     return redirect('/admin_dashboard')
 
 @app.route('/admin_dashboard/lists/add_list', methods=['GET', 'POST'])
-@limiter.limit("3 per minute")
+@limiter.limit("5 per minute")
 def add_list():
     if not session.get('logged_in') or not session.get('admin'):
         logging.warning(f'User attempted to access list addition without logging in as an admin')
