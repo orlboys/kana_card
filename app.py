@@ -286,15 +286,21 @@ def register():
                     conn.commit()
 
                     # Adding a default list for the user
-                    cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction" AND list_id = 10')
+                    cursor.execute('SELECT list_id FROM flashcard_lists WHERE list_name = "Introduction"')
                     list_result = cursor.fetchone()
                     if list_result:
-                        if cursor.fetchone() == 0:
-                            cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,))
-                            student_id = cursor.fetchone()[0]
-                            cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (10, student_id))
-                        conn.commit()
-                    flash('Registration successful.', 'success')
+                        list_id = list_result[0]  # Extract the list_id
+                        cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,))
+                        student_id = cursor.fetchone()[0]
+                        
+                        # Check if the student is already in the list
+                        cursor.execute('SELECT 1 FROM list_students WHERE list_id = ? AND student_id = ?', (list_id, student_id))
+                        if not cursor.fetchone():  # If no row exists, the student is not registered
+                            cursor.execute('INSERT INTO list_students (list_id, student_id) VALUES (?, ?)', (list_id, student_id))
+                            conn.commit()
+                            flash('Registration successful.', 'success')
+                        else:
+                            flash('Student is already registered for this list.', 'info')
                     logging.info(f"User {username} registered successfully")
         except sqlite3.Error as e:
             flash('An unexpected error occurred while processing your request. Please try again later.', 'error')
