@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function () { // Wait for the DOM 
 
 // MODALS //
 
-// Ideally, polymorphism would work here. However, it isn't, so we're doing this instead :)
+// Ideally, polymorphism would work here. However, it isn't, so we're doing this instead
 // Modal Functionality for User Editing
 function openUserEditModal(id, username, f_name, l_name, email, role) { // Opens the edit modal with the given user data
     document.getElementById('edit_index').value = id;
@@ -55,20 +55,20 @@ function closeMfaModal() { // Closes the MFA modal
 
 // Delete User Modal (Confirmation)
 function openUserDeleteModal(id) {
-    console.log('Setting delete index to:', id);
+    console.log('Setting delete index to:', id); // debugging
     document.getElementById('delete-index').value = id;
     var modalEl = document.getElementById('deleteUserModal');
     var deleteUserModal = new bootstrap.Modal(modalEl);
-    $('#deleteUserModal').modal('show')
+    $('#deleteUserModal').modal('show') // Show the modal - JQuery syntax here because Bootstrap's modal() function doesn't work
 }
 
 // Delete List Modal (Confirmation)
 function openListDeleteModal(id) {
-    console.log('Setting delete index to:', id);
+    console.log('Setting delete index to:', id); // debugging
     document.getElementById('delete-index').value = id;
     var modalEl = document.getElementById('deleteListModal');
     var deleteListModal = new bootstrap.Modal(modalEl);
-    $('#deleteListModal').modal('show')
+    $('#deleteListModal').modal('show') // Show the modal - JQuery syntax here because Bootstrap's modal() function doesn't work
 }
 
 
@@ -78,7 +78,7 @@ function addFlashcard() {
     let container = document.getElementById('flashcards-container');
     let index = container.children.length + 1; // Get current count of flashcards
 
-    let flashcardDiv = document.createElement('div');
+    let flashcardDiv = document.createElement('div'); // Create a new flashcard div
     flashcardDiv.className = 'flashcard-form my-3';
     flashcardDiv.innerHTML = `
         <div class="form-group">
@@ -92,7 +92,7 @@ function addFlashcard() {
         <button type="button" class="btn btn-danger" onclick="removeFlashcard(this)">Remove</button>
     `;
 
-    container.appendChild(flashcardDiv);
+    container.appendChild(flashcardDiv); // Place the newly created flashcard form query in the question container
 }
 
 function removeFlashcard(button) {
@@ -100,9 +100,9 @@ function removeFlashcard(button) {
 
     // Re-index all remaining flashcards
     document.querySelectorAll('.flashcard-form').forEach((flashcard, i) => {
-        let newIndex = i + 1;
+        let newIndex = i + 1; // New index for the flashcard - is 1-based therefore +1
         let labels = flashcard.querySelectorAll("label");
-        labels[0].textContent = `Question ${newIndex}:`;
+        labels[0].textContent = `Question ${newIndex}:`; 
         labels[1].textContent = `Answer ${newIndex}:`;
 
         let inputs = flashcard.querySelectorAll("input");
@@ -112,6 +112,8 @@ function removeFlashcard(button) {
         inputs[1].id = `flashcards-${newIndex}-answer`;
     });
 }
+
+// SEARCH FUNCTIONALITY //
 
 function searchListTable() {
     // Get the input field and its value
@@ -125,15 +127,15 @@ function searchListTable() {
     // Loop through all table rows (except the first, which contains table headers)
     var found = false;
     for (var i = 1; i < rows.length; i++) {
-        var cells = rows[i].getElementsByTagName('td');
+        var cells = rows[i].getElementsByTagName('td'); // Get all cells in the row
         var match = false;
         
         // Loop through all cells in the row
         for (var j = 0; j < cells.length; j++) {
-            if (cells[j]) {
-                var cellValue = cells[j].textContent || cells[j].innerText;
-                if (cellValue.toLowerCase().indexOf(filter) > -1) {
-                    match = true;
+            if (cells[j]) { // If the cell exists
+                var cellValue = cells[j].textContent || cells[j].innerText; // Get the cell's text content
+                if (cellValue.toLowerCase().indexOf(filter) > -1) { // If the cell's text content contains the filter
+                    match = true; // Set match to true and break the loop
                     break;
                 }
             }
@@ -158,6 +160,7 @@ function searchListTable() {
     }
 }
 
+// User Search Functionality - same as above, but for the user table
 function searchUserTable() {
     var input = document.getElementById('search');
     var filter = input.value.toLowerCase();
@@ -195,19 +198,28 @@ function searchUserTable() {
     else {
         searchError.style.display = '';
     }
+
+    // Show or hide the "No results found" message
+    var searchError = document.getElementById('search-error');
+    if (found) {
+        searchError.style.display = 'none';
+    }
+    else {
+        searchError.style.display = '';
+    }
 }
 
+// ALERT FUNCTIONALITY //
+
 // Alert Dismissal
-
-document.addEventListener("DOMContentLoaded", function () {
-    setTimeout(function () {
-        document.querySelectorAll('.alert').forEach(function (alert) {
-            alert.classList.remove('show');
-            alert.classList.add('fade');
-            setTimeout(function () {
-                alert.remove();
-            }, 1000);
-        } );
-
-    }, 5000);
+document.addEventListener("DOMContentLoaded", function () { // Wait for the DOM to be fully loaded
+    setTimeout(function () { // After 5 seconds
+        document.querySelectorAll('.alert').forEach(function (alert) { 
+            alert.classList.remove('show'); // Remove the 'show' class from the alert
+            alert.classList.add('fade'); // Add the 'fade' class to the alert
+            setTimeout(function () { 
+                alert.remove(); // Remove the alert from the DOM
+            }, 1000); // After 1 second
+        } ); 
+    }, 5000); // Begin the fading process after 5 seconds
 });
