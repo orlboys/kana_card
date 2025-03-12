@@ -315,11 +315,6 @@ def register():
             logging.error(f'Database error: {e} on user registration')
             conn.rollback()
         return redirect('/login')
-    else:
-        flash('There was an error with your form submission. Please check your input and try again.', 'error')
-        logging.warning("User made an invalid request to register")
-        logging.debug(f"Form data: {register_form.data}")
-        logging.debug(f"Form errors: {register_form.errors}")
 
     return render_template('register.html', register_form=register_form)
 
