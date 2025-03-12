@@ -1,4 +1,6 @@
 .venv/
+__pycache__/
+*.pyc
 # Ignore SSL/TLS certificate and key files
 cert.pem
 key.pem
