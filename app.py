@@ -14,7 +14,6 @@ from flask_wtf import CSRFProtect # For CSRF protection
 from forms import LoginForm, RegisterForm, ListForm, UserEditForm, ListEditForm, AssignListForm, MFAVerificationForm, LogoutForm, DeleteItemForm # For input validation and CSRF protection
 from flask_limiter import Limiter # For rate limiting
 from flask_limiter.util import get_remote_address # For rate limiting
-from markupsafe import escape # For escaping user input
 from datetime import timedelta # For session timeout
 import logging # For logging
 from error_handlers import register_error_handlers # For error handling

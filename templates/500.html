@@ -1,9 +1,15 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div class="container text-center mt-5">
-    <h1>500</h1>
-    <p>Oops! Something's gone wrong on our servers, try again later.</p>
-    <p><a href="/">Go back to the homepage</a></p>
-</div>
+<section class="min-vh-100 h-100 bg-dark text-white">
+    <div class="container text-center pt-5">
+        <h1 class="display-1">500</h1>
+        <br>
+        <p class="lead">Oops! Something's gone wrong on our end.</p>
+        <p>You tried to go to: <code>{{ request.path }}</code></p>
+        <p>Error details: <code>{{ error.message }}</code></p>
+        <p>Please try again later, or return to the homepage.</p>
+        <p><a class="btn btn-primary" href="/">Go back to the homepage</a></p>
+    </div>
+</section>
 {% endblock %}
