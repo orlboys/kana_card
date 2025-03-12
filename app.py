@@ -40,8 +40,9 @@ logging.basicConfig(
     level=logging.DEBUG, # Log level
     format='%(asctime)s - %(levelname)s - %(message)s' # Log format
 )
+
 # Cookie Security
-app.config.update(
+app.config.update( 
     SESSION_COOKIE_SECURE=True, # Enforces HTTPS
     SESSION_COOKIE_HTTPONLY=True, # Prevents client-side JS from accessing session cookies
     SESSION_COOKIE_SAMESITE="Strict" # Prevents CSRF attacks - cookies can only be sent to the same site that set them
@@ -54,22 +55,36 @@ def enforce_https():
         return redirect(request.url.replace("http://", "https://")) # NOTE: THIS IS A TEMPORARY SOLUTION FOR OFFLINE TESTING PURPOSES. PLEASE USE redirect("https://domain_name.com/" + request.path) FOR PRODUCTION!
 
 def make_session_permanent():
-    session.permanent = True
+    session.permanent = True 
 
 # Error Handlers
-register_error_handlers(app)
+register_error_handlers(app) # Register the error handlers - from error_handlers.py
 
 # Context Processor to make Logout Form available Globally
 @app.context_processor
 def inject_logout_form():
-    return dict(logout_form=LogoutForm())
+    return dict(logout_form=LogoutForm()) # This will make the logout form available in all templates
 
 def init_db():
     conn = sqlite3.connect('database.db')
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA foreign_keys = ON") # Enable foreign key constraints - this is important for cascading deletes
     c = conn.cursor()
 
     try:
+
+        # Schema Code
+        # | users     | students       | flashcard_lists | list_students  | flashcards  |
+        # |-----------|----------------|-----------------|----------------|-------------|
+        # | id   (P)  | student_id (P) | list_id (P)     | list_id (F)    | card_id (P) |
+        # | username  | user_id (F)    | list_name       | student_id (F) | list_id (F) |
+        # | password  |                |                 |                | question    |
+        # | f_name    |                |                 |                | answer      |
+        # | l_name    |                |                 |                |             |
+        # | email     |                |                 |                |             |
+        # | admin     |                |                 |                |             |
+        # | mfa_secret|                |                 |                |             |
+        # |-----------|----------------|-----------------|----------------|-------------|
+        
         c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,7 +135,7 @@ def init_db():
 
         conn.commit()
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        logging.error(f"Database error: {e}")
         conn.rollback()
         # Handle the error appropriately (e.g., log it, display an error message)
         # It might be appropriate to re-raise the exception in some cases
@@ -234,12 +249,6 @@ def verify_mfa():
             session['email'] = user[5]
             session['admin'] = user[6]  # Assuming admin is the 7th column
             flash('You were successfully logged in', 'success')
-            print("Logged in as:", session.get('username'))
-            print("Admin status:", session.get('admin'))
-            print("User ID:", session.get('user_id'))
-            print("Email:", session.get('email'))
-            print("First Name:", session.get('f_name'))
-            print("Last Name:", session.get('l_name'))
 
             del session['pending_user']
             logging.info(f"User {session['username']} successfully logged in")
@@ -334,14 +343,14 @@ def student_dashboard():
         logging.warning(f'User attempted to access student dashboard without logging in as a student')
         return redirect('/login')
     
-    def get_student_lists(user_id):
+    def get_student_lists(user_id): # Get all of the lists assigned to the student
         with get_db_connection() as conn:
             cursor = conn.cursor()
             try:
-                cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,))
+                cursor.execute('SELECT student_id FROM students WHERE user_id = ?', (user_id,)) # get the student_id of the student, since student_id and user_id are different
                 student_id = cursor.fetchone()[0]
-                print("Session user_id:", session.get('user_id'))
-                print("Fetched Student_id", student_id)
+                logging.debug("Session user_id:", session.get('user_id'))
+                logging.debug("Fetched Student_id", student_id)
 
                 cursor.execute('''
                 SELECT list_id, list_name
@@ -351,37 +360,40 @@ def student_dashboard():
                     FROM list_students
                     WHERE student_id = ?
                 )
-                ''', (student_id,)) # logic explanation: get all list records where the list_id is in the many-to-many table for the student
+                ''', (student_id,)) # get all of the lists assigned to the student.
 
                 lists = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
             except sqlite3.Error as e:
                 flash(f'Database error: {e}', 'error')
                 logging.error(f'Database error: {e} on fetching student lists')
                 lists = []
-        print(lists)
         return lists
     logging.info(f"User {session['username']} accessed the student dashboard")
-    return render_template('student_dashboard.html', lists = get_student_lists(session.get('user_id')))
+    return render_template('student_dashboard.html', lists = get_student_lists(session.get('user_id'))) 
 
-@app.route('/student_list/<int:list_id>/<int:card_index>', methods=['GET', 'POST'])
-def list_card(list_id, card_index=0):
+@app.route('/student_list/<int:list_id>/<int:card_index>', methods=['GET', 'POST']) # The list_id and card_index are passed as arguments.
+def list_card(list_id, card_index=0): #card_index is set to 0 by default, since the first card is the default card.
     if not session.get('logged_in') or session.get('admin'):
         logging.warning(f'User attempted to access flashcard view without logging in as a student')
         return redirect('/login')
     
-    def get_list_name(list_id):
+    def get_list_name(list_id): # Get the name of the list being viewed
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute('SELECT list_name FROM flashcard_lists WHERE list_id = ?', (list_id,))
-                list_name = cursor.fetchone()[0]
+                list_name = cursor.fetchone()[0] # Get the name of the list
             except sqlite3.Error as e:
                 flash(f'Database error, unable to fetch list name: {e}', 'error')
                 logging.error(f'Database error: {e} on fetching list name')
                 list_name = None
-        return list_name
+            except Exception as e:
+                flash(f'An error has occured, please try again later', 'error')
+                logging.error(f'error: {e} on fetching listname for list {list_id} in viewing flashcards')
+                list_name = None
+        return list_name # Return the name of the list
 
-    def get_flashcards(list_id):
+    def get_flashcards(list_id): # Get all of the flashcards in the list
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
@@ -391,23 +403,27 @@ def list_card(list_id, card_index=0):
                 flash(f'Database error, unable to fetch flashcards: {e}', 'error')
                 logging.error(f'Database error: {e} on fetching flashcards')
                 flashcards = []
+            except Exception as e:
+                flash(f'An error has occured, please try again later', 'error')
+                logging.error(f'error: {e} on fetching flashcards')
+                flashcards = []
         return flashcards
 
-    flashcards = get_flashcards(list_id)
-    total_cards = len(flashcards)
+    flashcards = get_flashcards(list_id) # Get all of the flashcards in the list
+    total_cards = len(flashcards) # Get the total number of flashcards in the list
 
-    if total_cards == 0 or card_index < 0 or card_index >= total_cards:
+    if total_cards == 0 or card_index < 0 or card_index >= total_cards: # If the list is empty or the card index is out of bounds
         logging.error(f"User {session['username']} attempted to access a non-existent flashcard. List ID: {list_id}, Card Index: {card_index}")
         return "No flashcards found", 404
     
     logging.info(f"User {session['username']} accessed flashcard {card_index} in list {list_id}")
 
-    return render_template(
+    return render_template( # Render the list.html template
         'list.html',
-        list_name=get_list_name(list_id),
+        list_name=get_list_name(list_id), # The list name for this page
         flashcard=flashcards[card_index],  # Single flashcard for this page
-        list_id=list_id,
-        card_index=card_index,
+        list_id=list_id, # The list ID for this page
+        card_index=card_index, # The card index for this page - what's currently being shown
         total_cards=total_cards
     )
 
@@ -485,7 +501,6 @@ def user_management():
                 cursor = conn.cursor()
                 cursor.execute('SELECT id, username, f_name, l_name, email, admin FROM users')
                 users = cursor.fetchall()
-                print("Fetched Users:", users)  # Debug print
             except sqlite3.Error as e:
                 flash(f'Database error - Unable to fetch Users: {e}', 'error')
                 logging.error(f'Database error: {e} on fetching users')
@@ -568,8 +583,6 @@ def delete_item():
     if delete_form.validate_on_submit():
         id = delete_form.delete_index.data
         type = delete_form.delete_type.data
-        print(f"Delete Type: {type}")
-        print(f"Delete ID: {id}")
         with get_db_connection() as conn:
             try:
                 cursor = conn.cursor()
