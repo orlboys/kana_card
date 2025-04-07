@@ -1,4 +1,4 @@
-hsc software engineering assessment task 2 :/
+hsc software engineering assessment task 2
 
 simple flask-based web app that took me way too long to make for what it is
 
