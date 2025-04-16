@@ -1,5 +1,9 @@
-hsc software engineering assessment task 2
+HSC Software Engineering - Assessment Task 2
 
-simple flask-based web app that took me way too long to make for what it is
+- A web-app designed to allow teachers and students to communicate.
+- Uses assignable flash-card lists for teachers to teach students content
 
-go study! thats what this app is for. originally, it was meant for just language learning, but you can kind of do whatever you want with it!
+STACK:
+- Bootstrap and HTML+CSS for front-end
+- Flask for back-end
+- SQLite for database management
