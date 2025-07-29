@@ -1,4 +1,4 @@
-# HSC Software Engineering - Assessment Task 2
+# Kanacard
 
 - A web-app designed to allow teachers and students to communicate.
 - Uses assignable flash-card lists for teachers to teach students content
@@ -17,3 +17,5 @@
 - Flask for back-end
 - SQLite for database management
 - Hosted on PythonAnywhere
+
+Made For the HSC Software Engineering course - rogramming for the Web + Secure Software Architecture
