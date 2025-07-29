@@ -2,6 +2,7 @@
 
 - A web-app designed to allow teachers and students to communicate.
 - Uses assignable flash-card lists for teachers to teach students content
+- Made for 日本語勉強, but can be used for all sorts of stuff
 
 ## STACK:
 
